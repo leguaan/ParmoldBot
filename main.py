@@ -1,21 +1,23 @@
 import discord
+from discord.ext import commands
 import os
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix='/', intents=intents)
 
-@client.event
-async def on_ready():
-    print(f'We have logged in as {client.user}')
-
-@client.event
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    if message.author == bot.user:
         return
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+    if 'mhm' in message.content:
+        await message.channel.send('Ta on jõuksis')
 
-client.run(os.environ.get('TOKEN'))
+@bot.command
+async def remindme(ctx, *, arg):
+    await ctx.send('Tee PR! Ma ei tea kuidas seda progeda.')
+
+
+bot.run(os.environ.get('TOKEN'))
