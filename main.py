@@ -4,6 +4,7 @@ import asyncio
 import sqlite3
 import re
 from datetime import datetime, timedelta
+import pytz
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -95,8 +96,8 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+    if 'mhm' in message.content.lower():
+        await message.channel.send('Ta on jõuksis!')
 
     # Handle the $remindme command
     if message.content.startswith('$remindme'):
@@ -131,5 +132,22 @@ async def on_message(message):
 
         except Exception as e:
             await message.channel.send(f"Something went wrong: {str(e)}")
+
+    if message.content.startswith('$silvertime'):
+        sydney_timezone = pytz.timezone('Australia/Sydney')
+        sydney_time = datetime.now(sydney_timezone)
+        await message.channel.send(f"Time in Sydney, Australia is {sydney_time.strftime('%H:%M')}")
+
+        
+    if message.content.startswith('$ristotime'):
+        ams_tz = pytz.timezone('Europe/Amsterdam')
+        ams_time = datetime.now(ams_tz)
+        await message.channel.send(f"Time in Maaskantje, Netherlands is {ams_time.strftime('%H:%M')}")
+
+    if "bad bot" in message.content.lower():
+        await message.add_reaction('😢')
+
+    if message.content.startswith('$help'):
+        await message.channel.send('KYS')
 
 client.run(os.environ.get('TOKEN'))
