@@ -2,3 +2,4 @@ discord
 dateparser
 apscheduler
 pytz
+requests
