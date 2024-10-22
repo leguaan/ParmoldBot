@@ -1,5 +1,8 @@
 discord
-dateparser
-apscheduler
 pytz
 requests
+opencv-python
+numpy
+pillow
+face-recognition
+mediapipe

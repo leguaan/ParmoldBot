@@ -1,19 +1,37 @@
-FROM python:3.9-alpine
+FROM python:3.10.3-slim-bullseye
 
-# Set the working directory
+RUN apt-get -y update
+RUN apt-get install -y --fix-missing \
+    gcc \
+    musl-dev \
+    python3-dev \
+    libffi-dev \
+    sqlite3 \
+    libsqlite3-dev \
+    build-essential \
+    cmake \
+    gfortran \
+    git \
+    wget \
+    curl \
+    graphicsmagick \
+    libgraphicsmagick1-dev \
+    libatlas-base-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libgtk2.0-dev \
+    libjpeg-dev \
+    liblapack-dev \
+    libswscale-dev \
+    pkg-config \
+    python3-dev \
+    python3-numpy \
+    software-properties-common \
+    zip \
+    && apt-get clean && rm -rf /tmp/* /var/tmp/*
+
 WORKDIR /app
-
-# Install SQLite and other dependencies
-RUN apk add --no-cache gcc musl-dev python3-dev libffi-dev sqlite-dev
-
-# Copy the requirements file into the container
 COPY requirements.txt /app/
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application code
-COPY main.py /app/
-
-# Command to run your bot
+COPY *.py /app/
 CMD ["python", "/app/main.py"]
