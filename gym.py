@@ -62,7 +62,7 @@ def get_average_people_count_at_time(time):
             cnt = int(data['data']['result'][0]['value'][1])
             if cnt == 0:
                 print(params)
-                print(data)
+                print(data, flush=True)
             return cnt
         print(params)
         print(data)
@@ -77,21 +77,20 @@ async def tryHandleMhm(message):
         return
     
     current_time = round_time_to_nearest_quarter_hour()
-    if message.author == 145929101482524672:
+    if message.author.id == 145929101482524672:
         sydney_timezone = pytz.timezone('Australia/Sydney')
         sydney_time = datetime.now(sydney_timezone)
         current_time = round_time_to_nearest_quarter_hour(sydney_time)
 
     
-    current_date = current_time.date()
-    dates = get_same_weekday_dates(current_date)
+    dates = get_same_weekday_dates(current_time)
 
     current_counts = []
     daily_maxima = []
     for date in dates:
         max_count = get_max_people_count_for_day(date)
         daily_maxima.append(max_count)
-        current_count = get_average_people_count_at_time(current_time)
+        current_count = get_average_people_count_at_time(date)
         current_counts.append(current_count)
     
     average_daily_max = sum(daily_maxima) / len(daily_maxima)

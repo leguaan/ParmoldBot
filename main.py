@@ -1,5 +1,6 @@
 import discord
 import os
+import sys
 
 from reminder import tryHandleRemindMe, load_reminders
 from gym import tryHandleMhm
@@ -18,7 +19,7 @@ async def tryHandleHelp(message):
 
 @client.event
 async def on_ready():
-    print(f'We have logged in as {client.user}')
+    print(f'We have logged in as {client.user}', flush=True)
     activity = discord.Activity(type=discord.ActivityType.watching, name="feetpics")
     await client.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(client)
@@ -45,5 +46,7 @@ async def on_message(message):
         await tryHandleInstantMeme(message)
     except Exception as e:
         message.reply('UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
+    
+    sys.stdout.flush() 
 
 client.run(os.environ.get('TOKEN'))
