@@ -1,12 +1,14 @@
 import discord
 import os
 import sys
+import traceback
 
 from reminder import tryHandleRemindMe, load_reminders
 from gym import tryHandleMhm
 from reputation import tryHandleBadBot, tryHandleGoodBot
 from timeteller import tryHandleRistoTime, tryHandleSilverTime
 from instantmeme import tryHandleInstantMeme
+from reactionmeme import tryHandleReactionMeme
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -44,8 +46,11 @@ async def on_message(message):
         await tryHandleHelp(message)
 
         await tryHandleInstantMeme(message)
-    except Exception as e:
-        message.reply('UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
+
+        #await tryHandleReactionMeme(message)
+    except Exception:
+        print(traceback.format_exc())
+        await message.reply('UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
     
     sys.stdout.flush() 
 

@@ -6,3 +6,7 @@ numpy
 pillow
 face-recognition
 mediapipe
+transformers
+bs4
+tensorflow
+tf-keras

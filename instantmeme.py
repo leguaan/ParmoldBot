@@ -20,8 +20,7 @@ async def tryHandleInstantMeme(message):
 
                     # Process the image
                     output_img = await process_image(img)
-                    if not output_img:
-                        return
+                    
                     # Convert output image to bytes
                     _, buffer = cv2.imencode('.png', output_img)
                     output_bytes = buffer.tobytes()
