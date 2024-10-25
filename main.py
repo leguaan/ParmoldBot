@@ -5,7 +5,7 @@ import traceback
 
 from reminder import tryHandleRemindMe, load_reminders
 from gym import tryHandleMhm
-from reputation import tryHandleBadBot, tryHandleGoodBot
+from reputation import tryHandleBadBot, tryHandleGoodBot, tryHandleReactionBot
 from timeteller import tryHandleRistoTime, tryHandleSilverTime
 from instantmeme import tryHandleInstantMeme
 from reactionmeme import tryHandleReactionMeme
@@ -32,12 +32,14 @@ async def on_message(message):
         return
     try:
         await tryHandleMhm(message)
-        
+
         await tryHandleRemindMe(message)
 
         await tryHandleBadBot(message)
 
         await tryHandleGoodBot(client, message)
+
+        await tryHandleReactionBot(client, message)
 
         await tryHandleRistoTime(message)
 
@@ -51,7 +53,7 @@ async def on_message(message):
     except Exception:
         print(traceback.format_exc())
         await message.reply('UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
-    
-    sys.stdout.flush() 
+
+    sys.stdout.flush()
 
 client.run(os.environ.get('TOKEN'))
