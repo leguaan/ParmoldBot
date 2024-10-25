@@ -82,7 +82,7 @@ async def send_reminder(rowid, user_id, channel_id, message, client):
     except sqlite3.Error as e:
         await message.channel.send(f"Täitsa loll lugu! Ei kustu ju ära: {str(e)}")
 
-async def tryHandleRemindMe(message):
+async def tryHandleRemindMe(client, message):
     if message.content.startswith('$remindme'):
         try:
             # Format: $remindme "Your reminder message" 3 days
@@ -105,7 +105,7 @@ async def tryHandleRemindMe(message):
 
             # Save the reminder to the database
             save_reminder(message.author.id, message.channel.id, reminder_message, remind_at.strftime('%Y-%m-%d %H:%M:%S'))
-            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds))
+            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds, client))
 
             await message.channel.send(f"Paras idikas, tuletan siis meelde! \"{reminder_message}\" - {time_str}")
 

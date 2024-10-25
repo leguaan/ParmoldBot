@@ -33,7 +33,7 @@ async def on_message(message):
     try:
         await tryHandleMhm(message)
 
-        await tryHandleRemindMe(message)
+        await tryHandleRemindMe(client, message)
 
         await tryHandleBadBot(message)
 
