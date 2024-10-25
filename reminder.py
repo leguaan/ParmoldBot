@@ -38,29 +38,31 @@ def convert_time_to_seconds(time_str):
 
 # Function to save a reminder to the database
 def save_reminder(user_id, channel_id, message, remind_at):
-    c.execute("INSERT INTO reminders (user_id, channel_id, reminder_message, remind_at) VALUES (?, ?, ?, ?)",
-              (user_id, channel_id, message, remind_at))
-    conn.commit()
+    try:
+        c.execute("INSERT INTO reminders (user_id, channel_id, reminder_message, remind_at) VALUES (?, ?, ?, ?)",
+                  (user_id, channel_id, message, remind_at))
+        conn.commit()
+    except sqlite3.Error as e:
+        await message.channel.send(f"Täitsa kuradi jama! Kutsuge on-call: {str(e)}")
 
 # Function to load reminders and resume waiting for them
 async def load_reminders(client):
-    c.execute("SELECT rowid, * FROM reminders")
-    reminders = c.fetchall()
-
-    for reminder in reminders:
-        rowid, user_id, channel_id, message, remind_at = reminder
-        remind_at_dt = datetime.strptime(remind_at, '%Y-%m-%d %H:%M:%S')
+    try:
+        c.execute("SELECT rowid, * FROM reminders")
+        reminders = c.fetchall()
         now = datetime.now()
 
-        # Calculate remaining time
-        remaining_seconds = (remind_at_dt - now).total_seconds()
+        for reminder in reminders:
+            rowid, user_id, channel_id, message, remind_at = reminder
+            remind_at_dt = datetime.strptime(remind_at, '%Y-%m-%d %H:%M:%S')
+            remaining_seconds = (remind_at_dt - now).total_seconds()
 
-        if remaining_seconds > 0:
-            # If time is still in the future, set a task to wait for it
-            asyncio.create_task(schedule_reminder(rowid, user_id, channel_id, message, remaining_seconds, client))
-        else:
-            # If the reminder time has already passed, send the reminder immediately
-            await send_reminder(rowid, user_id, channel_id, message, client)
+            if remaining_seconds > 0:
+                asyncio.create_task(schedule_reminder(rowid, user_id, channel_id, message, remaining_seconds, client))
+            else:
+                await send_reminder(rowid, user_id, channel_id, message, client)
+    except sqlite3.Error as e:
+        print(f"Raisk! Error loading reminders: {e}")
 
 # Function to wait and send the reminder
 async def schedule_reminder(rowid, user_id, channel_id, message, wait_time, client):
@@ -71,32 +73,31 @@ async def schedule_reminder(rowid, user_id, channel_id, message, wait_time, clie
 async def send_reminder(rowid, user_id, channel_id, message, client):
     channel = client.get_channel(channel_id)
     if channel:
-        await channel.send(f"<@{user_id}>, reminder: {message}")
+        await channel.send(f"<@{user_id}>, {message}")
 
     # Delete reminder from database after sending
-    c.execute("DELETE FROM reminders WHERE rowid = ?", (rowid,))
-    conn.commit()
-
-
+    try:
+        c.execute("DELETE FROM reminders WHERE rowid = ?", (rowid,))
+        conn.commit()
+    except sqlite3.Error as e:
+        await message.channel.send(f"Täitsa loll lugu! Ei kustu ju ära: {str(e)}")
 
 async def tryHandleRemindMe(message):
     if message.content.startswith('$remindme'):
         try:
-            # Example format: $remindme "Your reminder message" 3 days
+            # Format: $remindme "Your reminder message" 3 days
             command_pattern = r'\$remindme\s*"(.+)"\s*(\d+\s*\w+)'
             match = re.match(command_pattern, message.content)
 
             if not match:
-                await message.channel.send("Please use the correct format: $remindme \"your message\" time (e.g., 3 days).")
+                await message.channel.send("Putsis! Proovi: $remindme \"türa tulistab tühja...\" time (ntks, 3 days).")
                 return
 
             reminder_message = match.group(1)
             time_str = match.group(2)
-
-            # Convert time string to seconds
             time_in_seconds = convert_time_to_seconds(time_str)
             if time_in_seconds is None:
-                await message.channel.send("Invalid time format! Use a number followed by a unit (seconds, minutes, hours, days, months, or years).")
+                await message.channel.send("Aeg on vittus ju! Number ja unit (seconds, minutes, hours, days, months, or years).")
                 return
 
             # Calculate when the reminder should be triggered
@@ -104,11 +105,9 @@ async def tryHandleRemindMe(message):
 
             # Save the reminder to the database
             save_reminder(message.author.id, message.channel.id, reminder_message, remind_at.strftime('%Y-%m-%d %H:%M:%S'))
+            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds, client=message.guild.me))
 
-            # Set a task to wait and send the reminder
-            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds))
-
-            await message.channel.send(f"Reminder set! I'll remind you to \"{reminder_message}\" in {time_str}.")
+            await message.channel.send(f"Paras idikas, tuletan siis meelde! \"{reminder_message}\" - {time_str}")
 
         except Exception as e:
-            await message.channel.send(f"Something went wrong: {str(e)}")
+            await message.channel.send(f"Mis toimub, mingi jama juhtus: {str(e)}")
