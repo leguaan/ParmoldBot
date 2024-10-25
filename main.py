@@ -8,7 +8,6 @@ from gym import tryHandleMhm
 from reputation import tryHandleBadBot, tryHandleGoodBot, tryHandleReactionBot
 from timeteller import tryHandleRistoTime, tryHandleSilverTime
 from instantmeme import tryHandleInstantMeme
-from reactionmeme import tryHandleReactionMeme
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -49,7 +48,6 @@ async def on_message(message):
 
         await tryHandleInstantMeme(message)
 
-        #await tryHandleReactionMeme(message)
     except Exception:
         print(traceback.format_exc())
         await message.reply('UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
