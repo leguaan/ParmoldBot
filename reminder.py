@@ -105,7 +105,7 @@ async def tryHandleRemindMe(message):
 
             # Save the reminder to the database
             save_reminder(message.author.id, message.channel.id, reminder_message, remind_at.strftime('%Y-%m-%d %H:%M:%S'))
-            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds, client=message.guild.me))
+            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds))
 
             await message.channel.send(f"Paras idikas, tuletan siis meelde! \"{reminder_message}\" - {time_str}")
 
