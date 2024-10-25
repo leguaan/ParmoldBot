@@ -80,6 +80,10 @@ async def process_image(img):
             overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
             overlay_img = cv2.imread(overlay_path, cv2.IMREAD_UNCHANGED)
 
+            flip_vertical = random.choice([True, False])
+            if flip_vertical:
+                overlay_img = cv2.flip(overlay_img, 0)  # Flip vertically
+
             # Process overlay image with face mesh
             overlay_results = face_mesh.process(cv2.cvtColor(overlay_img, cv2.COLOR_BGR2RGB))
 
