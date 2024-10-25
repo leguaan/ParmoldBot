@@ -82,7 +82,7 @@ async def process_image(img):
 
             flip_vertical = random.choice([True, False])
             if flip_vertical:
-                overlay_img = cv2.flip(overlay_img, 0)  # Flip vertically
+                overlay_img = cv2.flip(overlay_img, 1)  # Flip vertically
 
             # Process overlay image with face mesh
             overlay_results = face_mesh.process(cv2.cvtColor(overlay_img, cv2.COLOR_BGR2RGB))
