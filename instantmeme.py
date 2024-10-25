@@ -20,15 +20,17 @@ async def tryHandleInstantMeme(message):
 
                     # Process the image
                     output_img = await process_image(img)
-                    
+
+                    if output_img is None:
+                        # Skip message if no face with eyes detected
+                        return
+
                     # Convert output image to bytes
                     _, buffer = cv2.imencode('.png', output_img)
                     output_bytes = buffer.tobytes()
 
                     await message.channel.send(file=discord.File(fp=io.BytesIO(output_bytes), filename='output.png'))
-
-                    # Stop processing other attachments
-                    break
+                    break  # Stop processing other attachments
 
 async def process_image(img):
     mp_face_mesh = mp.solutions.face_mesh
@@ -43,13 +45,14 @@ async def process_image(img):
         results = face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
         if not results.multi_face_landmarks:
-            return
+            # No faces detected, skip the image
+            return None
 
         # For each face detected
         for face_landmarks in results.multi_face_landmarks:
-            # Get eye landmarks (using specific indices from Mediapipe's face mesh)
-            left_eye_indices = [33, 133]  # Left eye corners
-            right_eye_indices = [362, 263]  # Right eye corners
+            # Get eye landmarks
+            left_eye_indices = [33, 133]
+            right_eye_indices = [362, 263]
 
             left_eye_points = []
             right_eye_points = []
@@ -64,10 +67,15 @@ async def process_image(img):
                 y = face_landmarks.landmark[idx].y * img.shape[0]
                 right_eye_points.append((x, y))
 
+            # Ensure eye points are detected
+            if not left_eye_points or not right_eye_points:
+                continue  # Skip if eyes are not detected
+
             left_eye_center = np.mean(left_eye_points, axis=0)
             right_eye_center = np.mean(right_eye_points, axis=0)
+            target_midpoint = (left_eye_center + right_eye_center) / 2
 
-            # Now, pick a random overlay image
+            # Pick a random overlay image
             overlay_filename = random.choice(os.listdir(OVERLAYS_FOLDER))
             overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
             overlay_img = cv2.imread(overlay_path, cv2.IMREAD_UNCHANGED)
@@ -76,7 +84,7 @@ async def process_image(img):
             overlay_results = face_mesh.process(cv2.cvtColor(overlay_img, cv2.COLOR_BGR2RGB))
 
             if not overlay_results.multi_face_landmarks:
-                continue  # Skip if no landmarks in overlay
+                continue  # Skip if no landmarks are found in overlay
 
             overlay_face_landmarks = overlay_results.multi_face_landmarks[0]
 
@@ -94,17 +102,21 @@ async def process_image(img):
                 y = overlay_face_landmarks.landmark[idx].y * overlay_img.shape[0]
                 overlay_right_eye_points.append((x, y))
 
+            if not overlay_left_eye_points or not overlay_right_eye_points:
+                continue  # Skip if overlay eyes are not detected
+
             overlay_left_eye_center = np.mean(overlay_left_eye_points, axis=0)
             overlay_right_eye_center = np.mean(overlay_right_eye_points, axis=0)
+            overlay_midpoint = (overlay_left_eye_center + overlay_right_eye_center) / 2
 
-            # Compute angle between eyes
+            # Compute angle and scale for alignment
             def compute_angle(p1, p2):
                 delta_y = p2[1] - p1[1]
                 delta_x = p2[0] - p1[0]
                 return np.degrees(np.arctan2(delta_y, delta_x))
 
-            angle_overlay = compute_angle(overlay_left_eye_center, overlay_right_eye_center)
             angle_target = compute_angle(left_eye_center, right_eye_center)
+            angle_overlay = compute_angle(overlay_left_eye_center, overlay_right_eye_center)
             angle = angle_target - angle_overlay
 
             # Compute scale based on distance between eyes
@@ -115,21 +127,16 @@ async def process_image(img):
             target_eye_distance = distance(left_eye_center, right_eye_center)
             scale = target_eye_distance / overlay_eye_distance
 
-            # Compute transformation matrix
-            center = tuple(overlay_left_eye_center)
-            M = cv2.getRotationMatrix2D(center, angle, scale)
-
-            # Adjust translation
-            tX = left_eye_center[0] - overlay_left_eye_center[0]
-            tY = left_eye_center[1] - overlay_left_eye_center[1]
-            M[0, 2] += tX
-            M[1, 2] += tY
+            # Create transformation matrix
+            M = cv2.getRotationMatrix2D(tuple(overlay_midpoint), angle, scale)
+            M[0, 2] += target_midpoint[0] - overlay_midpoint[0]
+            M[1, 2] += target_midpoint[1] - overlay_midpoint[1]
 
             # Warp the overlay image
             transformed_overlay = cv2.warpAffine(overlay_img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
 
-            # Create masks if overlay has alpha channel
-            if transformed_overlay.shape[2] == 4:
+            # Blend the images
+            if transformed_overlay.shape[2] == 4:  # If the overlay has an alpha channel
                 alpha_mask = transformed_overlay[:, :, 3] / 255.0
                 alpha_inv = 1.0 - alpha_mask
                 for c in range(0, 3):
