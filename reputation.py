@@ -1,7 +1,7 @@
 import random
 
 
-async def tryHandleBadBot(message):
+async def try_handle_bad_bot(message):
     bad_words = [
         "bad bot", "halb bot", "loll bot", "rumal bot", "idioot", "tüütu", "munn", "perse",
         "debiilik", "lollakas", "põmmpea", "tolvan", "värdjas", "mölakas", "idikas", "idioot bot"
@@ -10,7 +10,7 @@ async def tryHandleBadBot(message):
         await message.add_reaction('😢')
 
 
-async def tryHandleGoodBot(client, message):
+async def try_handle_good_bot(client, message):
     good_words = [
         "good bot", "hea bot", "tubli bot", "aitäh", "tubli", "suurepärane", "vinge",
         "äge", "mulle meeldib", "fantastiline", "tänan", "tänud", "huvä"
@@ -20,7 +20,7 @@ async def tryHandleGoodBot(client, message):
         await message.add_reaction(emoji)
 
 
-async def tryHandleReactionBot(client, message):
+async def try_handle_reaction_bot(client, message):
     parmold_emoji = [
         1291858408072417321, 1291859256013885540, 1291821346690568365, 1292772836557193216, 1291823258336759878,
         1291823259444052000, 1291820495477411891, 1292918601661157479, 1292918596628119592, 1291816855048290417,

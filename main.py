@@ -3,20 +3,22 @@ import os
 import sys
 import traceback
 
-from reminder import tryHandleRemindMe, load_reminders
-from gym import tryHandleMhm
-from reputation import tryHandleBadBot, tryHandleGoodBot, tryHandleReactionBot
-from timeteller import tryHandleRistoTime, tryHandleSilverTime
-from instantmeme import tryHandleInstantMeme
+from reminder import try_handle_remind_me, load_reminders
+from gym import try_handle_mhm
+from reputation import try_handle_bad_bot, try_handle_good_bot, try_handle_reaction_bot
+from timeteller import try_handle_risto_time, try_handle_silver_time
+from instantmeme import try_handle_instant_meme
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 client = discord.Client(intents=intents)
 
-async def tryHandleHelp(message):
+
+async def try_handle_help(message):
     if message.content.startswith('$help'):
         await message.channel.send('KYS')
+
 
 @client.event
 async def on_ready():
@@ -25,33 +27,36 @@ async def on_ready():
     await client.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(client)
 
+
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
     try:
-        await tryHandleMhm(message)
+        await try_handle_mhm(message)
 
-        await tryHandleRemindMe(client, message)
+        await try_handle_remind_me(client, message)
 
-        await tryHandleBadBot(message)
+        await try_handle_bad_bot(message)
 
-        await tryHandleGoodBot(client, message)
+        await try_handle_good_bot(client, message)
 
-        await tryHandleReactionBot(client, message)
+        await try_handle_reaction_bot(client, message)
 
-        await tryHandleRistoTime(message)
+        await try_handle_risto_time(message)
 
-        await tryHandleSilverTime(message)
+        await try_handle_silver_time(message)
 
-        await tryHandleHelp(message)
+        await try_handle_help(message)
 
-        await tryHandleInstantMeme(message)
+        await try_handle_instant_meme(message)
 
     except Exception:
         print(traceback.format_exc())
-        await message.reply('UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
+        await message.reply(
+            'UPSI WUPSI!! Uwu ma tegin nussi-vussi!! Wäikese kebo bongo! Ergo näeb KÕWA WAEWA, et see ära parandada nii kiiresti kui ta heaks arvab.')
 
     sys.stdout.flush()
+
 
 client.run(os.environ.get('TOKEN'))
