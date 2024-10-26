@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import requests
 import pytz
+import logging
 
 PROMETHEUS_URL = 'http://prometheus:9090'
 
@@ -46,7 +47,7 @@ def get_max_people_count_for_day(date):
             return int(data['data']['result'][0]['value'][1])
         return 0
     except Exception as e:
-        print(f"Error fetching data for date {date}: {e}")
+        logging.error(f"Error fetching data for date {date}: {e}")
         return 0
 
 
@@ -64,14 +65,14 @@ def get_average_people_count_at_time(time):
         if data['status'] == 'success' and len(data['data']['result']) == 1:
             cnt = int(data['data']['result'][0]['value'][1])
             if cnt == 0:
-                print(params)
-                print(data, flush=True)
+                logging.debug(params)
+                logging.debug(data)
             return cnt
-        print(params)
-        print(data)
+        logging.debug(params)
+        logging.debug(data)
         return 0
     except Exception as e:
-        print(f"Error fetching average people count at time {time}: {e}")
+        logging.error(f"Error fetching average people count at time {time}: {e}")
         return 0
 
 

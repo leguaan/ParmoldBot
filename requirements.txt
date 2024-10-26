@@ -1,8 +1,7 @@
 discord
 pytz
 requests
-opencv-python
 numpy
-pillow
-face-recognition
+opencv-python
 mediapipe
+seqlog

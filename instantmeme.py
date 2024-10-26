@@ -4,7 +4,10 @@ import os
 import cv2
 import numpy as np
 import mediapipe as mp
+from mediapipe.python.solutions.drawing_utils import _normalized_to_pixel_coordinates
 import io
+import logging
+import traceback
 
 OVERLAYS_FOLDER = 'data/faces'
 
@@ -152,3 +155,31 @@ async def process_image(img):
                 img = cv2.addWeighted(img, 1, transformed_overlay, 0.5, 0)
 
         return img
+
+
+async def draw_mask_on_face(client):
+    for overlay_filename in os.listdir(OVERLAYS_FOLDER):
+        try:
+            overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
+
+            dframe = cv2.imread(overlay_path)
+
+            image_input = cv2.cvtColor(dframe, cv2.COLOR_BGR2RGB)
+
+            face_mesh = mp.solutions.face_mesh.FaceMesh(static_image_mode=True, max_num_faces=2,
+                                                    min_detection_confidence=0.5)
+            image_rows, image_cols, _ = dframe.shape
+            results = face_mesh.process(cv2.cvtColor(image_input , cv2.COLOR_BGR2RGB))
+
+            ls_single_face=results.multi_face_landmarks[0].landmark
+            output_img = None
+            for idx in ls_single_face:
+                cord = _normalized_to_pixel_coordinates(idx.x,idx.y,image_cols,image_rows)
+                output_img = cv2.putText(image_input, '.', cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
+            
+            _, buffer = cv2.imencode('.png', output_img)
+            output_bytes = buffer.tobytes()
+            channel = client.get_channel(1297656271092187237)
+            await channel.send(file=discord.File(fp=io.BytesIO(output_bytes), filename='output.png'))
+        except Exception:
+            logging.exception(traceback.format_exc())

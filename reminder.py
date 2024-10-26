@@ -2,6 +2,7 @@ import asyncio
 import sqlite3
 import re
 from datetime import datetime, timedelta
+import logging
 
 conn = sqlite3.connect('data/reminders.db')
 c = conn.cursor()
@@ -39,7 +40,7 @@ def convert_time_to_seconds(time_str):
 
 
 # Function to save a reminder to the database
-def save_reminder(user_id, channel_id, message, remind_at):
+async def save_reminder(user_id, channel_id, message, remind_at):
     try:
         c.execute("INSERT INTO reminders (user_id, channel_id, reminder_message, remind_at) VALUES (?, ?, ?, ?)",
                   (user_id, channel_id, message, remind_at))
@@ -65,7 +66,7 @@ async def load_reminders(client):
             else:
                 await send_reminder(rowid, user_id, channel_id, message, client)
     except sqlite3.Error as e:
-        print(f"Raisk! Error loading reminders: {e}")
+        logging.error("Raisk! Error loading reminders", e)
 
 
 # Function to wait and send the reminder
