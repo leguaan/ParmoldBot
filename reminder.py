@@ -15,6 +15,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS reminders (
 )''')
 conn.commit()
 
+
 # Function to convert time with units into seconds
 def convert_time_to_seconds(time_str):
     time_regex = r"(\d+)\s*(second|minute|hour|day|month|year)s?"
@@ -31,10 +32,11 @@ def convert_time_to_seconds(time_str):
         'hour': 3600,
         'day': 86400,
         'month': 2592000,  # Assuming 30 days in a month
-        'year': 31536000   # 365 days
+        'year': 31536000  # 365 days
     }
 
     return value * time_multipliers.get(unit, 0)
+
 
 # Function to save a reminder to the database
 def save_reminder(user_id, channel_id, message, remind_at):
@@ -44,6 +46,7 @@ def save_reminder(user_id, channel_id, message, remind_at):
         conn.commit()
     except sqlite3.Error as e:
         await message.channel.send(f"Täitsa kuradi jama! Kutsuge on-call: {str(e)}")
+
 
 # Function to load reminders and resume waiting for them
 async def load_reminders(client):
@@ -64,10 +67,12 @@ async def load_reminders(client):
     except sqlite3.Error as e:
         print(f"Raisk! Error loading reminders: {e}")
 
+
 # Function to wait and send the reminder
 async def schedule_reminder(rowid, user_id, channel_id, message, wait_time, client):
     await asyncio.sleep(wait_time)
     await send_reminder(rowid, user_id, channel_id, message, client)
+
 
 # Function to send the reminder
 async def send_reminder(rowid, user_id, channel_id, message, client):
@@ -82,7 +87,8 @@ async def send_reminder(rowid, user_id, channel_id, message, client):
     except sqlite3.Error as e:
         await message.channel.send(f"Täitsa loll lugu! Ei kustu ju ära: {str(e)}")
 
-async def tryHandleRemindMe(client, message):
+
+async def try_handle_remind_me(client, message):
     if message.content.startswith('$remindme'):
         try:
             # Format: $remindme "Your reminder message" 3 days
@@ -97,17 +103,21 @@ async def tryHandleRemindMe(client, message):
             time_str = match.group(2)
             time_in_seconds = convert_time_to_seconds(time_str)
             if time_in_seconds is None:
-                await message.channel.send("Aeg on vittus ju! Number ja unit (seconds, minutes, hours, days, months, or years).")
+                await message.channel.send(
+                    "Aeg on vittus ju! Number ja unit (seconds, minutes, hours, days, months, or years).")
                 return
 
             # Calculate when the reminder should be triggered
             remind_at = datetime.now() + timedelta(seconds=time_in_seconds)
 
             # Save the reminder to the database
-            save_reminder(message.author.id, message.channel.id, reminder_message, remind_at.strftime('%Y-%m-%d %H:%M:%S'))
-            asyncio.create_task(schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds, client))
+            save_reminder(message.author.id, message.channel.id, reminder_message,
+                          remind_at.strftime('%Y-%m-%d %H:%M:%S'))
+            asyncio.create_task(
+                schedule_reminder(None, message.author.id, message.channel.id, reminder_message, time_in_seconds,
+                                  client))
 
             await message.channel.send(f"Paras idikas, tuletan siis meelde! \"{reminder_message}\" - {time_str}")
 
         except Exception as e:
-            await message.channel.send(f"Mis toimub, mingi jama juhtus: {str(e)}")
+            await message.channel.send(f"Johhaidii, mingi jama juhtus: {str(e)}")

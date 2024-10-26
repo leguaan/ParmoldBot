@@ -4,6 +4,7 @@ import pytz
 
 PROMETHEUS_URL = 'http://prometheus:9090'
 
+
 def round_time_to_nearest_quarter_hour(dt=None):
     if dt is None:
         tz = pytz.timezone('Europe/Tallinn')
@@ -11,7 +12,6 @@ def round_time_to_nearest_quarter_hour(dt=None):
     # Zero out the seconds and microseconds
     dt = dt.replace(second=0, microsecond=0)
     minute = (dt.minute // 15) * 15
-    remainder = dt.minute % 15
     if dt.minute % 15 >= 8:
         minute += 15
     if minute >= 60:
@@ -20,12 +20,14 @@ def round_time_to_nearest_quarter_hour(dt=None):
     dt = dt.replace(minute=minute)
     return dt
 
+
 def get_same_weekday_dates(current_date, weeks_back=2):
     dates = []
-    for i in range(1, weeks_back+1):
+    for i in range(1, weeks_back + 1):
         date = current_date - timedelta(weeks=i)
         dates.append(date)
     return dates
+
 
 def get_max_people_count_for_day(date):
     try:
@@ -40,12 +42,13 @@ def get_max_people_count_for_day(date):
         }
         response = requests.get(f'{PROMETHEUS_URL}/api/v1/query', params=params)
         data = response.json()
-        if data['status'] == 'success' and len(data['data']['result'])==1:
+        if data['status'] == 'success' and len(data['data']['result']) == 1:
             return int(data['data']['result'][0]['value'][1])
         return 0
     except Exception as e:
         print(f"Error fetching data for date {date}: {e}")
         return 0
+
 
 def get_average_people_count_at_time(time):
     try:
@@ -57,8 +60,8 @@ def get_average_people_count_at_time(time):
         }
         response = requests.get(f'{PROMETHEUS_URL}/api/v1/query', params=params)
         data = response.json()
-        
-        if data['status'] == 'success' and len(data['data']['result'])==1:
+
+        if data['status'] == 'success' and len(data['data']['result']) == 1:
             cnt = int(data['data']['result'][0]['value'][1])
             if cnt == 0:
                 print(params)
@@ -72,17 +75,16 @@ def get_average_people_count_at_time(time):
         return 0
 
 
-async def tryHandleMhm(message):
+async def try_handle_mhm(message):
     if 'mhm' not in message.content.lower():
         return
-    
+
     current_time = round_time_to_nearest_quarter_hour()
     if message.author.id == 145929101482524672:
         sydney_timezone = pytz.timezone('Australia/Sydney')
         sydney_time = datetime.now(sydney_timezone)
         current_time = round_time_to_nearest_quarter_hour(sydney_time)
 
-    
     dates = get_same_weekday_dates(current_time)
 
     current_counts = []
@@ -92,14 +94,13 @@ async def tryHandleMhm(message):
         daily_maxima.append(max_count)
         current_count = get_average_people_count_at_time(date)
         current_counts.append(current_count)
-    
+
     average_daily_max = sum(daily_maxima) / len(daily_maxima)
     average_daily_current = sum(current_counts) / len(current_counts)
 
     percentage = average_daily_current / average_daily_max
 
-    if(percentage > 0.5):
+    if percentage > 0.5:
         await message.reply(f'Ta pigem on jõuksis! (ratio={percentage:.2f})')
     else:
         await message.reply(f'Ta pigem pole jõuksis! (ratio={percentage:.2f})')
-    

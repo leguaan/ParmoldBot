@@ -8,7 +8,8 @@ import io
 
 OVERLAYS_FOLDER = 'data/faces'
 
-async def tryHandleInstantMeme(message):
+
+async def try_handle_instant_meme(message):
     if message.attachments:
         for attachment in message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg']):
@@ -32,14 +33,15 @@ async def tryHandleInstantMeme(message):
                     await message.channel.send(file=discord.File(fp=io.BytesIO(output_bytes), filename='output.png'))
                     break  # Stop processing other attachments
 
+
 async def process_image(img):
     mp_face_mesh = mp.solutions.face_mesh
 
     with mp_face_mesh.FaceMesh(
-        static_image_mode=True,
-        max_num_faces=10,
-        refine_landmarks=True,
-        min_detection_confidence=0.5) as face_mesh:
+            static_image_mode=True,
+            max_num_faces=10,
+            refine_landmarks=True,
+            min_detection_confidence=0.5) as face_mesh:
 
         # Convert the BGR image to RGB before processing.
         results = face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
