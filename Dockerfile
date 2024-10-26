@@ -1,19 +1,26 @@
 FROM python:3.10.3-slim-bullseye
 
-RUN apt-get -y update
-RUN apt-get install -y --fix-missing \
+# Update package lists
+RUN apt-get update
+
+# Core build and development tools
+RUN apt-get install -y --no-install-recommends \
     gcc \
-    musl-dev \
-    python3-dev \
-    libffi-dev \
-    sqlite3 \
-    libsqlite3-dev \
     build-essential \
     cmake \
     gfortran \
-    git \
-    wget \
-    curl \
+    musl-dev \
+    python3-dev \
+    libffi-dev
+
+# Python and database libraries
+RUN apt-get install -y --no-install-recommends \
+    python3-numpy \
+    sqlite3 \
+    libsqlite3-dev
+
+# Image processing and multimedia libraries
+RUN apt-get install -y --no-install-recommends \
     graphicsmagick \
     libgraphicsmagick1-dev \
     libatlas-base-dev \
@@ -22,16 +29,29 @@ RUN apt-get install -y --fix-missing \
     libgtk2.0-dev \
     libjpeg-dev \
     liblapack-dev \
-    libswscale-dev \
-    pkg-config \
-    python3-dev \
-    python3-numpy \
-    software-properties-common \
-    zip \
-    && apt-get clean && rm -rf /tmp/* /var/tmp/*
+    libswscale-dev
 
+# Utility tools
+RUN apt-get install -y --no-install-recommends \
+    git \
+    wget \
+    curl \
+    pkg-config \
+    software-properties-common \
+    zip
+
+# Clean up apt cache to reduce image size
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set the working directory
 WORKDIR /app
+
+# Copy requirements and install Python dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code
 COPY *.py /app/
+
+# Command to run the application
 CMD ["python", "/app/main.py"]
