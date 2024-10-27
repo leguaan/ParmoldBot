@@ -11,6 +11,7 @@ from gym import try_handle_mhm
 from reputation import try_handle_bad_bot, try_handle_good_bot, try_handle_reaction_bot
 from timeteller import try_handle_risto_time, try_handle_silver_time
 from instantmeme import try_handle_instant_meme
+from ace import try_handle_ace
 
 seqlog.log_to_seq(
    server_url="http://seq:5341/",
@@ -61,6 +62,8 @@ async def on_message(message):
         await try_handle_help(message)
 
         await try_handle_instant_meme(message)
+
+        await try_handle_ace(message)
 
     except Exception:
         logging.exception(traceback.format_exc())

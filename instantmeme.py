@@ -11,34 +11,82 @@ import traceback
 
 OVERLAYS_FOLDER = 'data/faces'
 
-LEFT_EYE_INDICES = [33, 133]  # Points for left eye
-RIGHT_EYE_INDICES = [362, 263]  # Points for right eye
-MOUTH_INDICES = [61, 291]  # Points for mouth corners
-
-
 async def try_handle_instant_meme(message):
     if message.attachments:
         for attachment in message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg']):
                 async with message.channel.typing():
-                    # Download the image
-                    img_bytes = await attachment.read()
-                    np_arr = np.frombuffer(img_bytes, np.uint8)
-                    img = cv2.imdecode(np_arr, cv2.IMREAD_UNCHANGED)
+                    img = await get_img_from_attachment(attachment)
+                    faces = get_faces(img)
 
-                    # Process the image
-                    output_img = await process_image(img)
+                    if not faces.multi_face_landmarks:
+                        logging.info('Message {id} didnt contain any faces', id=message.id)
+                        return None
 
-                    if output_img is None:
-                        # Skip message if no face with eyes detected
-                        return
+                    points_on_faces = get_specific_points_on_faces(img, faces)
+                    logging.debug('Points on faces {pts}', pts=points_on_faces)
+                    draw_points_on_faces(img, points_on_faces)
 
-                    # Convert output image to bytes
-                    _, buffer = cv2.imencode('.png', output_img)
-                    output_bytes = buffer.tobytes()
+                    await send_img_to_channel(img, message.channel)
 
-                    await message.channel.send(file=discord.File(fp=io.BytesIO(output_bytes), filename='output.png'))
-                    break  # Stop processing other attachments
+
+def get_img_from_path(path):
+    return cv2.imread(path)
+
+async def get_img_from_attachment(attachment):
+    img_bytes = await attachment.read()
+    np_arr = np.frombuffer(img_bytes, np.uint8)
+    img = cv2.imdecode(np_arr, cv2.IMREAD_UNCHANGED)
+    return img;
+
+
+def get_faces(img, no_of_faces = 10):
+    face_mesh = mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=True,
+            max_num_faces=no_of_faces,
+            refine_landmarks=True,
+            min_detection_confidence=0.5)
+    faces = face_mesh.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    return faces
+
+
+def draw_masks_on_faces(img, faces):
+    image_rows, image_cols, _ = img.shape
+    for face in faces.multi_face_landmarks:
+        for mask_point in face.landmark:
+            cord = _normalized_to_pixel_coordinates(mask_point.x,mask_point.y,image_cols,image_rows)
+            cv2.putText(img, '.', cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
+
+def draw_specific_points_on_faces(img, faces, points = [33, 263]):
+    image_rows, image_cols, _ = img.shape
+    for face in faces.multi_face_landmarks:
+        all_points = face.landmark
+        for mask_point in points:
+            cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
+            cv2.putText(img, '.', cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
+
+def get_specific_points_on_faces(img, faces, points = [33, 263, 61]):
+    points_on_faces = []
+    image_rows, image_cols, _ = img.shape
+    for face in faces.multi_face_landmarks:
+        all_points = face.landmark
+        points_on_face = []
+        for mask_point in points:
+            cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
+            points_on_face.append(cord)
+        points_on_faces.append(points_on_face)
+    return points_on_faces
+
+def draw_points_on_faces(img, points_on_faces):
+    for face in points_on_faces:
+        for point in face:
+            cv2.putText(img, '.', point,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
+            
+
+async def send_img_to_channel(img, channel):
+    _, buffer = cv2.imencode('.png', img)
+    output_bytes = buffer.tobytes()
+    await channel.send(file=discord.File(fp=io.BytesIO(output_bytes), filename='output.png'))
 
 
 async def process_image(img):
