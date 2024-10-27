@@ -32,6 +32,7 @@ async def try_handle_instant_meme(message):
                         overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
 
                         overlay = get_img_from_path(overlay_path)
+                        overlay = transform_overlay(img, overlay)
                         overlay_faces = get_faces(overlay, no_of_faces=1)
                         points_on_overlay_faces = get_specific_points_on_faces(overlay, overlay_faces)
                         logging.debug('Points on overlay faces {pts}', pts=points_on_overlay_faces, extra={'message_id': message.id})
@@ -130,13 +131,32 @@ def draw_points_on_faces(img, points_on_faces):
     for face in points_on_faces:
         for point in face:
             cv2.putText(img, '.', point,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
-            
+
 
 async def send_img_to_channel(img, channel):
     _, buffer = cv2.imencode('.png', img)
     output_bytes = buffer.tobytes()
     await channel.send(file=discord.File(fp=io.BytesIO(output_bytes), filename='output.png'))
 
+def calculate_average_brightness(image):
+    return np.mean(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
+
+def calculate_average_contrast(image):
+    return np.std(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
+
+def transform_overlay(image, overlay_image):
+    # Calculate average brightness and contrast for both images
+    source_brightness = calculate_average_brightness(image)
+    source_contrast = calculate_average_contrast(image)
+    overlay_brightness = calculate_average_brightness(overlay_image)
+    overlay_contrast = calculate_average_contrast(overlay_image)
+
+    # Adjust overlay brightness and contrast based on source image
+    contrast_factor = source_contrast / overlay_contrast if overlay_contrast != 0 else 1
+    brightness_adjustment = source_brightness - overlay_brightness * contrast_factor
+
+    # Apply brightness and contrast adjustment to overlay image
+    return cv2.convertScaleAbs(overlay_image, alpha=contrast_factor, beta=brightness_adjustment)
 
 async def process_image(img):
     mp_face_mesh = mp.solutions.face_mesh
