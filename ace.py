@@ -2,7 +2,7 @@ import ast
 import operator
 import math
 import re
-import asyncio
+from timeout import timeout
 
 allowed_operators = {
     ast.Add: operator.add,
@@ -78,11 +78,10 @@ async def try_handle_ace(message):
             expression = match.group(1)
             expression = expression.replace('^', '**')
             try:
-                timeout = 2
-                loop = asyncio.get_event_loop()
-                result = await asyncio.wait_for(loop.run_in_executor(None, safe_eval, expression), timeout)
-                await message.reply(f"> {result}")
-            except asyncio.TimeoutError:
+                with timeout(seconds=5):
+                    result = safe_eval(expression)
+                    await message.reply(f"> {result}")
+            except TimeoutError:
                 await message.reply("Error: Evaluation timed out.")
             except Exception as e:
                 await message.reply(f"Error evaluating expression: {e}")

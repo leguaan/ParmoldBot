@@ -16,7 +16,7 @@ from ace import try_handle_ace
 seqlog.log_to_seq(
    server_url="http://seq:5341/",
    api_key="5gFywFBgqKr5OzJhvydH",
-   level=logging.INFO,
+   level=logging.DEBUG,
    batch_size=10,
    auto_flush_timeout=10,
    override_root_logger=True)

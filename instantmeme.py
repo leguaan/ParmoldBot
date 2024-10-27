@@ -15,23 +15,68 @@ async def try_handle_instant_meme(message):
     if message.attachments:
         for attachment in message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg']):
+                logging.debug('try_handle_instant_meme', extra={'message_content': message.content, 'message_id': message.id})
                 async with message.channel.typing():
                     img = await get_img_from_attachment(attachment)
                     faces = get_faces(img)
 
                     if not faces.multi_face_landmarks:
-                        logging.info('Message {id} didnt contain any faces', id=message.id)
+                        logging.info('Message {message_id} didnt contain any faces', message_id=message.id)
                         return None
 
                     points_on_faces = get_specific_points_on_faces(img, faces)
-                    logging.debug('Points on faces {pts}', pts=points_on_faces)
-                    draw_points_on_faces(img, points_on_faces)
+                    logging.debug('Points on faces {pts}', pts=points_on_faces, extra={'message_id': message.id})
 
+                    for face in points_on_faces:
+                        overlay_filename = random.choice(os.listdir(OVERLAYS_FOLDER))
+                        overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
+
+                        overlay = get_img_from_path(overlay_path)
+                        overlay_faces = get_faces(overlay, no_of_faces=1)
+                        points_on_overlay_faces = get_specific_points_on_faces(overlay, overlay_faces)
+                        logging.debug('Points on overlay faces {pts}', pts=points_on_overlay_faces, extra={'message_id': message.id})
+
+                        p1_src = np.array(points_on_overlay_faces[0][0])
+                        p2_src = np.array(points_on_overlay_faces[0][1])
+
+                        p1_dst = np.array(face[0])
+                        p2_dst = np.array(face[1])
+
+                        A = np.array([
+                            [p1_src[0], -p1_src[1], 1, 0],
+                            [p1_src[1],  p1_src[0], 0, 1],
+                            [p2_src[0], -p2_src[1], 1, 0],
+                            [p2_src[1],  p2_src[0], 0, 1]
+                        ])
+
+                        b = np.array([p1_dst[0], p1_dst[1], p2_dst[0], p2_dst[1]])
+
+                        params, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+                        a, b_param, tx, ty = params
+
+                        M = np.array([
+                            [a, -b_param, tx],
+                            [b_param,  a, ty]
+                        ])
+
+                        rows, cols = img.shape[:2]
+                        transformed_overlay = cv2.warpAffine(overlay, M, (cols, rows))
+
+                        y1, y2 = 0, 0 + transformed_overlay.shape[0]
+                        x1, x2 = 0, 0 + transformed_overlay.shape[1]
+
+                        alpha_s = transformed_overlay[:, :, 3] / 255.0
+                        alpha_l = 1.0 - alpha_s
+
+                        for c in range(0, 3):
+                            img[y1:y2, x1:x2, c] = (alpha_s * transformed_overlay[:, :, c] +
+                                                    alpha_l * img[y1:y2, x1:x2, c])
+                        
                     await send_img_to_channel(img, message.channel)
 
 
 def get_img_from_path(path):
-    return cv2.imread(path)
+    return cv2.imread(path, -1)
 
 async def get_img_from_attachment(attachment):
     img_bytes = await attachment.read()
@@ -65,7 +110,7 @@ def draw_specific_points_on_faces(img, faces, points = [33, 263]):
             cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
             cv2.putText(img, '.', cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
 
-def get_specific_points_on_faces(img, faces, points = [33, 263, 61]):
+def get_specific_points_on_faces(img, faces, points = [33, 263]):
     points_on_faces = []
     image_rows, image_cols, _ = img.shape
     for face in faces.multi_face_landmarks:
