@@ -76,7 +76,11 @@ async def try_handle_instant_meme(message):
 
 
 def get_img_from_path(path):
-    return cv2.imread(path, -1)
+    overlay_img = cv2.imread(path, -1)
+    flip_vertical = random.choice([True, False])
+    if flip_vertical:
+        overlay_img = cv2.flip(overlay_img, 1)
+    return overlay_img
 
 async def get_img_from_attachment(attachment):
     img_bytes = await attachment.read()
