@@ -29,7 +29,9 @@ async def try_handle_instant_meme(message):
                         draw_masks_on_faces(img, faces)
                     elif message.content.startswith('$eyes'):
                         draw_specific_points_on_faces(img, faces)
-                    elif message.content.startswith('$explain'):
+                    elif message.content.startswith('$explainmin'):
+                        draw_letters_on_faces(img, faces, '')
+                    elif message.content.startswith('$explainfull'):
                         draw_letters_on_faces(img, faces)
                     else:
                         draw_overlays_on_faces(img, faces)
@@ -124,7 +126,7 @@ def draw_specific_points_on_faces(img, faces, points = [33, 263]):
             cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
             cv2.putText(img, '.', cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
 
-def draw_letters_on_faces(img, faces):
+def draw_letters_on_faces(img, faces, alt='.'):
     image_rows, image_cols, _ = img.shape
     letters = {
         33: 'l',
@@ -142,7 +144,7 @@ def draw_letters_on_faces(img, faces):
         all_points = face.landmark
         for mask_point in range(len(all_points)):
             cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
-            cv2.putText(img, '.' if mask_point not in letters else letters[mask_point], cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
+            cv2.putText(img, alt if mask_point not in letters else letters[mask_point], cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
 
 def get_specific_points_on_faces(img, faces, points = [33, 263]):
     points_on_faces = []
