@@ -7,11 +7,12 @@ import mediapipe as mp
 from mediapipe.python.solutions.drawing_utils import _normalized_to_pixel_coordinates
 import io
 import logging
-import traceback
 
 OVERLAYS_FOLDER = 'data/faces'
 
 async def try_handle_instant_meme(message):
+    if message.content.startswith('$ignore'):
+        return;
     if message.attachments:
         for attachment in message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg']):
@@ -21,59 +22,70 @@ async def try_handle_instant_meme(message):
                     faces = get_faces(img)
 
                     if not faces.multi_face_landmarks:
-                        logging.info('Message {message_id} didnt contain any faces', message_id=message.id)
-                        return None
+                            logging.info('Message {message_id} didnt contain any faces', message_id=message.id)
+                            return None
 
-                    points_on_faces = get_specific_points_on_faces(img, faces)
-                    logging.debug('Points on faces {pts}', pts=points_on_faces, extra={'message_id': message.id})
-
-                    for face in points_on_faces:
-                        overlay_filename = random.choice(os.listdir(OVERLAYS_FOLDER))
-                        overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
-
-                        overlay = get_img_from_path(overlay_path)
-                        overlay = transform_overlay(img, overlay)
-                        overlay_faces = get_faces(overlay, no_of_faces=1)
-                        points_on_overlay_faces = get_specific_points_on_faces(overlay, overlay_faces)
-                        logging.debug('Points on overlay faces {pts}', pts=points_on_overlay_faces, extra={'message_id': message.id})
-
-                        p1_src = np.array(points_on_overlay_faces[0][0])
-                        p2_src = np.array(points_on_overlay_faces[0][1])
-
-                        p1_dst = np.array(face[0])
-                        p2_dst = np.array(face[1])
-
-                        A = np.array([
-                            [p1_src[0], -p1_src[1], 1, 0],
-                            [p1_src[1],  p1_src[0], 0, 1],
-                            [p2_src[0], -p2_src[1], 1, 0],
-                            [p2_src[1],  p2_src[0], 0, 1]
-                        ])
-
-                        b = np.array([p1_dst[0], p1_dst[1], p2_dst[0], p2_dst[1]])
-
-                        params, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
-                        a, b_param, tx, ty = params
-
-                        M = np.array([
-                            [a, -b_param, tx],
-                            [b_param,  a, ty]
-                        ])
-
-                        rows, cols = img.shape[:2]
-                        transformed_overlay = cv2.warpAffine(overlay, M, (cols, rows))
-
-                        y1, y2 = 0, 0 + transformed_overlay.shape[0]
-                        x1, x2 = 0, 0 + transformed_overlay.shape[1]
-
-                        alpha_s = transformed_overlay[:, :, 3] / 255.0
-                        alpha_l = 1.0 - alpha_s
-
-                        for c in range(0, 3):
-                            img[y1:y2, x1:x2, c] = (alpha_s * transformed_overlay[:, :, c] +
-                                                    alpha_l * img[y1:y2, x1:x2, c])
+                    if message.content.startswith('$mask'):
+                        draw_masks_on_faces(img, faces)
+                    elif message.content.startswith('$eyes'):
+                        draw_specific_points_on_faces(img, faces)
+                    elif message.content.startswith('$explain'):
+                        draw_letters_on_faces(img, faces)
+                    else:
+                        draw_overlays_on_faces(img, faces)
                         
                     await send_img_to_channel(img, message.channel)
+
+
+def draw_overlays_on_faces(img, faces):
+    points_on_faces = get_specific_points_on_faces(img, faces)
+
+    for face in points_on_faces:
+        overlay_filename = random.choice(os.listdir(OVERLAYS_FOLDER))
+        overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
+
+        overlay = get_img_from_path(overlay_path)
+        overlay = transform_overlay(img, overlay)
+        overlay_faces = get_faces(overlay, no_of_faces=1)
+        points_on_overlay_faces = get_specific_points_on_faces(overlay, overlay_faces)
+
+        p1_src = np.array(points_on_overlay_faces[0][0])
+        p2_src = np.array(points_on_overlay_faces[0][1])
+
+        p1_dst = np.array(face[0])
+        p2_dst = np.array(face[1])
+
+        A = np.array([
+            [p1_src[0], -p1_src[1], 1, 0],
+            [p1_src[1],  p1_src[0], 0, 1],
+            [p2_src[0], -p2_src[1], 1, 0],
+            [p2_src[1],  p2_src[0], 0, 1]
+        ])
+
+        b = np.array([p1_dst[0], p1_dst[1], p2_dst[0], p2_dst[1]])
+
+        params, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+        a, b_param, tx, ty = params
+
+        M = np.array([
+            [a, -b_param, tx],
+            [b_param,  a, ty]
+        ])
+
+        rows, cols = img.shape[:2]
+        transformed_overlay = cv2.warpAffine(overlay, M, (cols, rows))
+
+        y1, y2 = 0, 0 + transformed_overlay.shape[0]
+        x1, x2 = 0, 0 + transformed_overlay.shape[1]
+
+        alpha_s = transformed_overlay[:, :, 3] / 255.0
+        alpha_l = 1.0 - alpha_s
+
+        for c in range(0, 3):
+            img[y1:y2, x1:x2, c] = (alpha_s * transformed_overlay[:, :, c] +
+                                    alpha_l * img[y1:y2, x1:x2, c])
+            
+    return img
 
 def get_img_from_path(path):
     overlay_img = cv2.imread(path, -1)
@@ -111,6 +123,26 @@ def draw_specific_points_on_faces(img, faces, points = [33, 263]):
         for mask_point in points:
             cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
             cv2.putText(img, '.', cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
+
+def draw_letters_on_faces(img, faces):
+    image_rows, image_cols, _ = img.shape
+    letters = {
+        33: 'l',
+        159: 't',
+        133: 'r',
+        145: 'b',
+        362: 'L',
+        386: 'T',
+        263: 'R',
+        374: 'B',
+        61: 'm', # may be wrong
+        409: 'M', # wrong but close
+    }
+    for face in faces.multi_face_landmarks:
+        all_points = face.landmark
+        for mask_point in range(len(all_points)):
+            cord = _normalized_to_pixel_coordinates(all_points[mask_point].x,all_points[mask_point].y,image_cols,image_rows)
+            cv2.putText(img, '.' if mask_point not in letters else letters[mask_point], cord,cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 2)
 
 def get_specific_points_on_faces(img, faces, points = [33, 263]):
     points_on_faces = []
