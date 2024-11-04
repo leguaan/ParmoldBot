@@ -1,4 +1,5 @@
 import random
+import re
 
 
 async def try_handle_bad_bot(message):
@@ -37,3 +38,12 @@ async def try_handle_reaction_bot(client, message):
         emoji = client.get_emoji(random_emoji_id)
         if emoji:
             await message.add_reaction(emoji)
+
+
+async def try_handle_greeting(message):
+    pattern = r't+e+r+e+\s+h+o+m+i+k+u+s+t+'
+    match = re.match(pattern, message.content)
+    if not match:
+        return
+    tere = f"ter{'e' * random.randint(1, 8)} hommik{'u' * random.randint(1, 8)}st"
+    await message.channel.send(tere)
