@@ -4,7 +4,7 @@ import sys
 import traceback
 import seqlog
 import logging
-
+from datetime import datetime
 
 from reminder import try_handle_remind_me, load_reminders
 from gym import try_handle_mhm
@@ -26,7 +26,7 @@ seqlog.log_to_seq(
 
 intents = discord.Intents.default()
 intents.message_content = True
-
+start_time: datetime = None
 client = discord.Client(intents=intents)
 
 
@@ -35,12 +35,35 @@ async def try_handle_help(message):
         await message.channel.send('KYS')
 
 
+async def try_handle_uptime(message: discord.Message):
+    if message.content.startswith('$uptime'):
+        uptime = datetime.now() - start_time
+        days = uptime.days
+        hours, remainder = divmod(uptime.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        await message.channel.send(
+            f"Ma näen kõwwa vaeva juba: "
+            f"{days}d {hours}h {minutes}m {seconds}s\n"
+            f"Alates: {start_time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+
+
 @client.event
 async def on_ready():
+    global start_time
+    start_time = datetime.now()
+
     logging.info(f'We have logged in as {client.user}')
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await client.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(client)
+
+    startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
+    channel = client.get_channel(startup_channel_id)
+    if channel:
+        await channel.send(f"🔄 PIRRRAAAKIII, ma olen tagasi {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    else:
+        logging.error(f"Could not find channel with ID {startup_channel_id}")
 
 
 @client.event
@@ -48,6 +71,8 @@ async def on_message(message):
     if message.author == client.user:
         return
     try:
+        await try_handle_uptime(message)
+
         await try_handle_mhm(message)
 
         await try_handle_remind_me(client, message)
