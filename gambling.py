@@ -15,7 +15,7 @@ RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36
 
 class Database:
     def __init__(self, db_name: str):
-        self.db_name = db_name
+        self.conn_pool = sqlite3.connect(db_name, check_same_thread=False)
         self._create_tables()
 
     def _create_tables(self):
@@ -30,7 +30,7 @@ class Database:
             conn.commit()
 
     def _get_connection(self):
-        return sqlite3.connect(self.db_name)
+        return self.conn_pool
 
     def get_user_balance(self, user_id: int) -> tuple:
         conn = self._get_connection()
@@ -55,12 +55,14 @@ class Database:
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
+            cutoff = (datetime.fromisoformat(timestamp) - timedelta(days=1)).isoformat()
             cursor.execute('''
                 UPDATE users 
                 SET balance = balance + ?, 
                     last_daily = ? 
                 WHERE user_id = ?
-            ''', (amount, timestamp, user_id))
+                AND (last_daily IS NULL OR last_daily < ?)
+            ''', (amount, timestamp, user_id, cutoff))
             conn.commit()
             return cursor.rowcount > 0
         except sqlite3.Error as e:
@@ -159,8 +161,8 @@ async def try_handle_bet(message: Message):
         return
 
     bet_choice = parts[2].lower()
-    if bet_choice not in ['red', 'black']:
-        await message.channel.send("Vale panuse valik! Vali 'red' või 'black'.")
+    if bet_choice not in ['red', 'black', 'green']:
+        await message.channel.send("Vale panuse valik! Vali 'red', 'black' või 'green'.")
         return
 
     user_id = message.author.id
@@ -177,8 +179,12 @@ async def try_handle_bet(message: Message):
     result_color = 'red' if number in RED_NUMBERS else 'black' if number != 0 else 'green'
 
     if result_color == bet_choice:
-        db.add_winnings(user_id, amount)
-        result_msg = f"Pall maandus {number} ({result_color}). Võitsid {amount} eurot!"
+        if result_color == 'green':
+            winnings = amount * 35
+        else:
+            winnings = amount
+        db.add_winnings(user_id, winnings)
+        result_msg = f"Pall maandus {number} ({result_color}). Võitsid {winnings} eurot!"
     else:
         result_msg = f"Pall maandus {number} ({result_color}). Kaotasid {amount} eurot."
 
