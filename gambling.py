@@ -186,3 +186,149 @@ async def try_handle_bet(message: Message):
 
     balance, _ = db.get_user_balance(user_id)
     await message.channel.send(f"{result_msg} Su uus balanss on {balance} eurot.")
+
+
+active_blackjack_games = {}  # Maps user_id to game state
+
+def draw_card():
+    # Ace is 11; face cards are 10.
+    return random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11])
+
+def compute_hand_total(cards: list) -> int:
+    total = sum(cards)
+    aces = cards.count(11)
+    while total > 21 and aces:
+        total -= 10
+        aces -= 1
+    return total
+
+# Add refund_bet to Database so push outcomes can return the bet (only 1:1 payout)
+def refund_bet(self, user_id: int, amount: int) -> None:
+    conn = self._get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE users 
+            SET balance = balance + ? 
+            WHERE user_id = ?
+        ''', (amount, user_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        logging.error(f"Failed to refund bet for {user_id}: {e}")
+
+# Monkey-patch the method into our Database class.
+Database.refund_bet = refund_bet
+
+async def try_handle_blackjack(message: Message):
+    if not message.content.startswith('$blackjack'):
+        return
+
+    parts = message.content.split()
+    if len(parts) != 2:
+        await message.channel.send("Usage: $blackjack <bet>")
+        return
+    try:
+        bet = int(parts[1])
+        if bet <= 0 or bet > MAX_BET:
+            raise ValueError
+    except ValueError:
+        await message.channel.send(f"Bet must be a positive integer (max {MAX_BET}).")
+        return
+
+    user_id = message.author.id
+    if user_id in active_blackjack_games:
+        await message.channel.send("Finish your current blackjack game first!")
+        return
+
+    balance, _ = db.get_user_balance(user_id)
+    if bet > balance:
+        await message.channel.send("Not enough funds for that bet!")
+        return
+
+    if not db.place_bet(user_id, bet):
+        await message.channel.send("Failed to place bet.")
+        return
+
+    # Deal initial cards.
+    player_cards = [draw_card(), draw_card()]
+    dealer_cards = [draw_card(), draw_card()]
+    active_blackjack_games[user_id] = {
+        'bet': bet,
+        'player_cards': player_cards,
+        'dealer_cards': dealer_cards,
+    }
+    player_total = compute_hand_total(player_cards)
+    dealer_visible = dealer_cards[0]
+    await message.channel.send(
+        f"Blackjack started!\nYour cards: {player_cards} (total: {player_total}).\n"
+        f"Dealer shows: {dealer_visible}.\n"
+        "Type `$hit` to draw a card or `$stand` to hold."
+    )
+
+async def try_handle_hit(message: Message):
+    if not message.content.startswith('$hit'):
+        return
+
+    user_id = message.author.id
+    if user_id not in active_blackjack_games:
+        return  # No active game for this user
+
+    game = active_blackjack_games[user_id]
+    card = draw_card()
+    game['player_cards'].append(card)
+    player_total = compute_hand_total(game['player_cards'])
+    
+    if player_total > 21:
+        bet = game['bet']
+        del active_blackjack_games[user_id]
+        await message.channel.send(
+            f"You drew a {card}. Your cards: {game['player_cards']} (total: {player_total}).\n"
+            f"Bust! You lost {bet}."
+        )
+    else:
+        await message.channel.send(
+            f"You drew a {card}. Your cards: {game['player_cards']} (total: {player_total}).\n"
+            "Type `$hit` to draw another card or `$stand` to hold."
+        )
+
+async def try_handle_stand(message: Message):
+    if not message.content.startswith('$stand'):
+        return
+
+    user_id = message.author.id
+    if user_id not in active_blackjack_games:
+        return
+
+    game = active_blackjack_games[user_id]
+    bet = game['bet']
+    player_total = compute_hand_total(game['player_cards'])
+    dealer_cards = game['dealer_cards']
+    dealer_total = compute_hand_total(dealer_cards)
+    dealer_actions = ""
+
+    # Dealer reveals hidden card and draws until reaching 17.
+    while dealer_total < 17:
+        card = draw_card()
+        dealer_cards.append(card)
+        dealer_total = compute_hand_total(dealer_cards)
+        dealer_actions += f" Dealer draws {card}."
+    
+    # Determine outcome.
+    if dealer_total > 21 or player_total > dealer_total:
+        # Win: payout is 1:1 so we add bet*2 (the original bet + profit).
+        db.add_winnings(user_id, bet)
+        outcome = f"You win! You gain {bet}."
+    elif player_total == dealer_total:
+        # Push: refund the bet.
+        db.refund_bet(user_id, bet)
+        outcome = "Push! Your bet has been returned."
+    else:
+        outcome = f"You lose {bet}."
+    
+    final_message = (
+        f"Your final hand: {game['player_cards']} (total: {player_total}).\n"
+        f"Dealer's hand: {dealer_cards} (total: {dealer_total}).{dealer_actions}\n"
+        f"{outcome}"
+    )
+    del active_blackjack_games[user_id]
+    await message.channel.send(final_message)
