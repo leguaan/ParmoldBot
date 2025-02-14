@@ -15,7 +15,8 @@ RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36
 
 class Database:
     def __init__(self, db_name: str):
-        self.conn_pool = sqlite3.connect(db_name, check_same_thread=False)
+        self.db_name = db_name
+        self.conn = None
         self._create_tables()
 
     def _create_tables(self):
@@ -30,7 +31,9 @@ class Database:
             conn.commit()
 
     def _get_connection(self):
-        return self.conn_pool
+        if not self.conn:
+            self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
+        return self.conn
 
     def get_user_balance(self, user_id: int) -> tuple:
         conn = self._get_connection()
@@ -48,8 +51,6 @@ class Database:
         except sqlite3.Error as e:
             logging.error(f"Error getting user {user_id}: {e}")
             return 0, None
-        finally:
-            conn.close()
 
     def update_daily(self, user_id: int, amount: int, timestamp: str) -> bool:
         conn = self._get_connection()
@@ -68,25 +69,22 @@ class Database:
         except sqlite3.Error as e:
             logging.error(f"Daily update failed for {user_id}: {e}")
             return False
-        finally:
-            conn.close()
 
     def place_bet(self, user_id: int, amount: int) -> bool:
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute('''
-                        UPDATE users 
-                        SET balance = balance - ? 
-                        WHERE user_id = ? AND balance >= ?
-                    ''', (amount, user_id, amount))
+                UPDATE users 
+                SET balance = balance - ? 
+                WHERE user_id = ? AND balance >= ?
+            ''', (amount, user_id, amount))
             conn.commit()
             return cursor.rowcount > 0
         except sqlite3.Error as e:
-            logging.error(f"Bet placement failed for {user_id}: {e}")
+            conn.rollback()
+            logging.error(f"Bet placement failed: {e}")
             return False
-        finally:
-            conn.close()
 
     def add_winnings(self, user_id: int, amount: int) -> None:
         conn = self._get_connection()
@@ -100,8 +98,6 @@ class Database:
             conn.commit()
         except sqlite3.Error as e:
             logging.error(f"Failed to add winnings for {user_id}: {e}")
-        finally:
-            conn.close()
 
 
 db = Database(DB_NAME)
