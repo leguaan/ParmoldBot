@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import logging
 import random
-from discord import Message
+from discord import Message, Embed
 
 logging.basicConfig(level=logging.INFO)
 DB_NAME = 'data/gambling.db'
@@ -11,6 +11,29 @@ DB_NAME = 'data/gambling.db'
 DAILY_BONUS = 1000
 MAX_BET = 1000000
 RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
+
+FAILURE_MESSAGES = [
+    "Su raha kadus nagu E36 karbid! ☀️💸",
+    "Proovige mõne aja pärast uuesti! 🐈⬛🍽️",
+    "Keskmine Eesti kasiino kogemus 🇪🇪🎰",
+    "HÄÄÄÄ! Varastasin su raha ära! 💸"
+]
+
+FLEX_IMAGES = [
+    "https://c.tenor.com/YjPBups7H48AAAAC/tenor.gif",
+    "https://c.tenor.com/JHRDfmi9BIgAAAAC/tenor.gif",
+    "https://c.tenor.com/4HoVpVyd5P8AAAAC/tenor.gif",
+    "https://c.tenor.com/E_OfJ1RCwWoAAAAd/tenor.gif",
+    "https://c.tenor.com/BjYGnd9fh-IAAAAd/tenor.gif",
+    "https://c.tenor.com/AmvPSQ4TirwAAAAd/tenor.gif",
+    "https://c.tenor.com/OAST4gjK3w0AAAAC/tenor.gif",
+    "https://c.tenor.com/cvHHLzrQ4ZgAAAAd/tenor.gif",
+    "https://c.tenor.com/oCxcur4d32wAAAAd/tenor.gif",
+    "https://c.tenor.com/eyX1fMHj4G0AAAAd/tenor.gif",
+    "https://c.tenor.com/25IUy_ha-lQAAAAC/tenor.gif",
+    "https://c.tenor.com/v_qPOJw06Q0AAAAd/tenor.gif",
+    "https://c.tenor.com/dfdxodtK4_YAAAAC/tenor.gif"
+]
 
 
 class Database:
@@ -101,6 +124,32 @@ class Database:
 
 
 db = Database(DB_NAME)
+
+
+async def try_handle_spend(message: Message):
+    if not message.content.startswith('$flex'):
+        return
+
+    user_id = message.author.id
+    balance, _ = db.get_user_balance(user_id)
+
+    if balance < 250:
+        await message.channel.send("Kus su raha on!? 💸")
+        return
+
+    if not db.place_bet(user_id, 250):
+        await message.channel.send("❌ Tekkis viga raha mahaarvamisel.")
+        return
+
+    if random.random() < 0.2:
+        await message.channel.send(random.choice(FAILURE_MESSAGES))
+        return
+
+    random_gif = random.choice(FLEX_IMAGES)
+    await message.channel.send(
+        content=f"🎁 **{message.author.name} viskas just 250 eurot tuulde:**",
+        embed=Embed().set_image(url=random_gif)
+    )
 
 
 async def try_handle_daily(message: Message):
