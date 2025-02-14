@@ -126,7 +126,7 @@ class Database:
 db = Database(DB_NAME)
 
 
-async def try_handle_spend(message: Message):
+async def try_handle_flex(message: Message):
     if not message.content.startswith('$flex'):
         return
 

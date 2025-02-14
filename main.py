@@ -10,7 +10,7 @@ from reminder import try_handle_remind_me, load_reminders
 from gym import try_handle_mhm
 from reputation import try_handle_bad_bot, try_handle_good_bot, try_handle_reaction_bot, try_handle_greeting
 from timeteller import try_handle_risto_time, try_handle_silver_time
-from gambling import try_handle_daily, try_handle_bet, try_handle_balance, try_handle_blackjack, try_handle_hit, try_handle_stand
+from gambling import try_handle_flex, try_handle_daily, try_handle_bet, try_handle_balance, try_handle_blackjack, try_handle_hit, try_handle_stand
 from instantmeme import try_handle_instant_meme
 from ace import try_handle_ace
 from impersonate import try_handle_impersonation
@@ -96,6 +96,8 @@ async def on_message(message):
         await try_handle_impersonation(client, message)
 
         await try_handle_greeting(message)
+
+        await try_handle_flex(message)
 
         await try_handle_daily(message)
 
