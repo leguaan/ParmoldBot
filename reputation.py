@@ -41,8 +41,8 @@ async def try_handle_reaction_bot(client, message):
 
 
 async def try_handle_greeting(message):
-    pattern = r't+e+r+e+\s+h+o+m+i+k+u+s+t+'
-    match = re.match(pattern, message.content)
+    pattern = r'(?i)t+e+r+e+\s+h+o+m+m+i+k+u*s*t*[!?.]*$'
+    match = re.match(pattern, message.content.strip(), re.IGNORECASE)
     if not match:
         return
     tere = f"ter{'e' * random.randint(1, 8)} hommik{'u' * random.randint(1, 8)}st"
