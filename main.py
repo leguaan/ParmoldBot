@@ -14,6 +14,7 @@ from gambling import try_handle_daily, try_handle_bet, try_handle_balance
 from instantmeme import try_handle_instant_meme
 from ace import try_handle_ace
 from impersonate import try_handle_impersonation
+from ai import try_handle_ai
 
 seqlog.log_to_seq(
    server_url="http://seq:5341/",
@@ -37,7 +38,7 @@ async def try_handle_help(message):
 @client.event
 async def on_ready():
     logging.info(f'We have logged in as {client.user}')
-    activity = discord.Activity(type=discord.ActivityType.watching, name="feetpics")
+    activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await client.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(client)
 
@@ -76,6 +77,8 @@ async def on_message(message):
         await try_handle_bet(message)
 
         await try_handle_balance(message)
+
+        await try_handle_ai(client, message)
 
     except Exception:
         logging.exception(traceback.format_exc())

@@ -5,3 +5,4 @@ numpy
 opencv-python
 mediapipe
 seqlog
+ollama
