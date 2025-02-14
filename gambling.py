@@ -122,6 +122,19 @@ class Database:
         except sqlite3.Error as e:
             logging.error(f"Failed to add winnings for {user_id}: {e}")
 
+    def refund_bet(self, user_id: int, amount: int) -> None:
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE users 
+                SET balance = balance + ? 
+                WHERE user_id = ?
+            ''', (amount, user_id))
+            conn.commit()
+        except sqlite3.Error as e:
+            logging.error(f"Failed to refund bet for {user_id}: {e}")
+
 
 db = Database(DB_NAME)
 
@@ -239,9 +252,11 @@ async def try_handle_bet(message: Message):
 
 active_blackjack_games = {}  # Maps user_id to game state
 
+
 def draw_card():
     # Ace is 11; face cards are 10.
     return random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11])
+
 
 def compute_hand_total(cards: list) -> int:
     total = sum(cards)
@@ -251,22 +266,6 @@ def compute_hand_total(cards: list) -> int:
         aces -= 1
     return total
 
-# Add refund_bet to Database so push outcomes can return the bet (only 1:1 payout)
-def refund_bet(self, user_id: int, amount: int) -> None:
-    conn = self._get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE users 
-            SET balance = balance + ? 
-            WHERE user_id = ?
-        ''', (amount, user_id))
-        conn.commit()
-    except sqlite3.Error as e:
-        logging.error(f"Failed to refund bet for {user_id}: {e}")
-
-# Monkey-patch the method into our Database class.
-Database.refund_bet = refund_bet
 
 async def try_handle_blackjack(message: Message):
     if not message.content.startswith('$blackjack'):
@@ -314,6 +313,7 @@ async def try_handle_blackjack(message: Message):
         "Type `$hit` to draw a card or `$stand` to hold."
     )
 
+
 async def try_handle_hit(message: Message):
     if not message.content.startswith('$hit'):
         return
@@ -326,7 +326,7 @@ async def try_handle_hit(message: Message):
     card = draw_card()
     game['player_cards'].append(card)
     player_total = compute_hand_total(game['player_cards'])
-    
+
     if player_total > 21:
         bet = game['bet']
         del active_blackjack_games[user_id]
@@ -339,6 +339,7 @@ async def try_handle_hit(message: Message):
             f"You drew a {card}. Your cards: {game['player_cards']} (total: {player_total}).\n"
             "Type `$hit` to draw another card or `$stand` to hold."
         )
+
 
 async def try_handle_stand(message: Message):
     if not message.content.startswith('$stand'):
@@ -361,7 +362,7 @@ async def try_handle_stand(message: Message):
         dealer_cards.append(card)
         dealer_total = compute_hand_total(dealer_cards)
         dealer_actions += f" Dealer draws {card}."
-    
+
     # Determine outcome.
     if dealer_total > 21 or player_total > dealer_total:
         # Win: payout is 1:1 so we add bet*2 (the original bet + profit).
@@ -373,7 +374,7 @@ async def try_handle_stand(message: Message):
         outcome = "Push! Your bet has been returned."
     else:
         outcome = f"You lose {bet}."
-    
+
     final_message = (
         f"Your final hand: {game['player_cards']} (total: {player_total}).\n"
         f"Dealer's hand: {dealer_cards} (total: {dealer_total}).{dealer_actions}\n"
