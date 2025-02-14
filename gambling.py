@@ -207,9 +207,7 @@ async def try_handle_beg(message: Message):
 
     user_id = message.author.id
     if random.random() < 0.1:
-        if not db.add_winnings(user_id, 5):
-            await message.channel.send("Midagi läks kerjamisega pekki")
-            return
+        db.add_winnings(user_id, 5)
         await message.channel.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
 
 
