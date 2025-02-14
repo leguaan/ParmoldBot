@@ -201,6 +201,18 @@ async def try_handle_balance(message: Message):
     await message.channel.send(f"Sul on hetkel {balance} eurot. Aeg võita, tšempion!")
 
 
+async def try_handle_beg(message: Message):
+    if not message.content.startswith('$beg'):
+        return
+
+    user_id = message.author.id
+    if random.random() < 0.1:
+        if not db.place_bet(user_id, 10):
+            await message.channel.send("Midagi läks kerjamisega pekki")
+            return
+        await message.channel.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
+
+
 async def try_handle_bet(message: Message):
     if not message.content.startswith('$bet'):
         return
