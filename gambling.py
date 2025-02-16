@@ -19,6 +19,14 @@ FAILURE_MESSAGES = [
     "HÄÄÄÄ! Varastasin su raha ära! 💸"
 ]
 
+
+BIG_FAILURE_MESSAGES = [
+    "Flexisid rottide seas ja jäid kogu rahast ilma!",
+    "Maksuamet külmutas su konto maksupettuste tõttu!",
+    "Keskerakonnal oli vaja trahvi maksta ja see oli oodatust suurem.",
+    "Yoink!"
+]
+
 FLEX_IMAGES = [
     "https://c.tenor.com/YjPBups7H48AAAAC/tenor.gif",
     "https://c.tenor.com/JHRDfmi9BIgAAAAC/tenor.gif",
@@ -154,8 +162,13 @@ async def try_handle_flex(message: Message):
         await message.channel.send("❌ Tekkis viga raha mahaarvamisel.")
         return
 
-    if random.random() < 0.2:
-        await message.channel.send(random.choice(FAILURE_MESSAGES))
+    chance = random.random()
+    if chance < 0.2:
+        if chance < 0.1:
+            db.place_bet(user_id, balance)
+            await message.channel.send(random.choice(BIG_FAILURE_MESSAGES))
+        else:
+            await message.channel.send(random.choice(FAILURE_MESSAGES))
         return
 
     random_gif = random.choice(FLEX_IMAGES)
@@ -206,9 +219,16 @@ async def try_handle_beg(message: Message):
         return
 
     user_id = message.author.id
-    if random.random() < 0.1:
-        db.add_winnings(user_id, 5)
-        await message.channel.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
+    chance = random.random()
+    if chance < 0.5:
+        if chance < 0.1:
+            balance,_ = db.get_user_balance(user_id);
+            if balance > 0:
+                db.place_bet(user_id, balance);
+                await message.channel.send("Kerjasid mustlaselt ja ta lasi kogu su raha rotti!")
+        else:
+            db.add_winnings(user_id, 5)
+            await message.channel.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
 
 
 async def try_handle_bet(message: Message):

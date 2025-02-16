@@ -6,7 +6,9 @@ def clean_response(response):
     return re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL).strip()
 
 async def try_handle_ai(client, message):
-    if client.user in message.mentions and len(message.mentions) == 1:
+    mention = f"<@{client.user.id}>"
+    mention_alt = f"<@!{client.user.id}>"
+    if mention in message.content or mention_alt in message.content:
         async with message.channel.typing():
             content = message.content.replace(f"<@{client.user.id}>", "").strip()
             ai_input = {'role': 'user', 'content': f"{content}. Keep answer under 1000 char!"}
