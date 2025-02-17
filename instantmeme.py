@@ -116,10 +116,10 @@ def choose_best_overlay(overlay, src_face_landmarks):
 
             logging.debug(f"Nose offset ratio: {offset_ratio:.2f}")
 
-            if offset_ratio < -0.15:  # Strong left orientation
-                return "left"
-            elif offset_ratio > 0.15:  # Strong right orientation
+            if offset_ratio < 0.40:  # Strong right orientation
                 return "right"
+            elif offset_ratio > 0.40:  # Strong left orientation
+                return "left"
             return "center"
 
         except Exception as e:
