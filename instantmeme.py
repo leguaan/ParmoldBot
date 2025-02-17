@@ -78,36 +78,37 @@ def draw_overlays_on_faces(img, faces):
         ])
 
         rows, cols = img.shape[:2]
-        transformed_overlay = cv2.warpAffine(
-            best_overlay, M, (cols, rows),
-            flags=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_TRANSPARENT
-        )
+        transformed_overlay = cv2.warpAffine(best_overlay, M, (cols, rows))
 
-        # Improved alpha blending
-        if transformed_overlay.shape[2] == 4:
-            alpha = transformed_overlay[:, :, 3] / 255.0
-            overlay_rgb = transformed_overlay[:, :, :3]
-        else:
-            alpha = np.ones(transformed_overlay.shape[:2], dtype=np.float32)
-            overlay_rgb = transformed_overlay
+        y1, y2 = 0, 0 + transformed_overlay.shape[0]
+        x1, x2 = 0, 0 + transformed_overlay.shape[1]
 
-        # Blend using matrix operations instead of per-channel
-        img = (alpha[..., np.newaxis] * overlay_rgb +
-               (1 - alpha[..., np.newaxis]) * img).astype(np.uint8)
+        alpha_s = transformed_overlay[:, :, 3] / 255.0
+        alpha_l = 1.0 - alpha_s
+
+        for c in range(0, 3):
+            img[y1:y2, x1:x2, c] = (alpha_s * transformed_overlay[:, :, c] +
+                                    alpha_l * img[y1:y2, x1:x2, c])
 
     return img
 
 
 def get_img_from_path(path):
-    return cv2.imread(path, -1)
+    overlay_img = cv2.imread(path, -1)
+    return overlay_img
 
 
 def choose_best_overlay_simple(overlay, src_eye_points):
     # Simplified geometric flip detection
-    left_eye_x = src_eye_points[0][0]
-    right_eye_x = src_eye_points[1][0]
-    return cv2.flip(overlay, 1) if left_eye_x > right_eye_x else overlay
+    overlay_faces = get_faces(overlay, no_of_faces=1)
+    overlay_points = get_specific_points_on_faces(overlay, overlay_faces)
+
+    # Calculate source and overlay eye directions
+    src_dx = src_eye_points[1][0] - src_eye_points[0][0]  # right.x - left.x
+    overlay_dx = overlay_points[0][1][0] - overlay_points[0][0][0]
+
+    # Flip if eye directions mismatch
+    return cv2.flip(overlay, 1) if (src_dx * overlay_dx) < 0 else overlay
 
 
 async def get_img_from_attachment(attachment):
