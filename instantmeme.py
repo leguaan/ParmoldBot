@@ -117,22 +117,18 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     cos_theta = np.dot(src_vector, ovr_vector) / (np.linalg.norm(src_vector) * np.linalg.norm(ovr_vector))
     angle = np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
 
-    # Calculate direction (horizontal component of vectors)
     src_dx = src_vector[0]
     ovr_dx = ovr_vector[0]
-
-    # Determine if direction is reversed
     direction_match = np.sign(src_dx) == np.sign(ovr_dx)
 
-    # We need a significant angle difference and reversed direction to decide if we need to flip
     should_flip = False
-    if not direction_match:  # Significant direction mismatch
-        if abs(angle) > 90:  # Large angle difference
+    if not direction_match:
+        # Check if vectors are significantly opposite (angle close to 180)
+        if angle > 160:  # Very large angle, almost opposite
             should_flip = True
-        elif abs(angle) > 60:  # Smaller angle difference but significant mismatch
-            # Allow a flip only if both vectors are sufficiently misaligned
-            if abs(src_dx) > 50:
-                should_flip = True
+        # Check for moderate angles with significant horizontal mismatch
+        elif angle > 90 and abs(src_dx) > 50 and abs(ovr_dx) > 50:
+            should_flip = True
 
     # Log for debugging
     logging.info(f"Angle difference: {angle} degrees")
