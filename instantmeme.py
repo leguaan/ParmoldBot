@@ -115,7 +115,7 @@ def choose_best_overlay_simple(overlay, src_eye_points):
 
     # Calculate vectors
     src_vector = src_right - src_left
-    ovr_vector_original = ovr_left_viewer - ovr_right_viewer  # Fix: left - right
+    ovr_vector_original = ovr_right_viewer - ovr_left_viewer
 
     # Calculate angles (for logging)
     def calculate_angle(vec1, vec2):
