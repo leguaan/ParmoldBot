@@ -51,7 +51,7 @@ def draw_overlays_on_faces(img, faces):
         overlay = get_img_from_path(overlay_path)
         overlay = transform_overlay(img, overlay)
         face_landmarks = faces.multi_face_landmarks[idx].landmark
-        best_overlay = choose_best_overlay(overlay, face_landmarks, img.shape[1], img.shape[0])
+        best_overlay = choose_best_overlay(overlay, face_landmarks)
         overlay_faces = get_faces(best_overlay, no_of_faces=1)
         points_on_overlay_faces = get_specific_points_on_faces(best_overlay, overlay_faces)
 
@@ -99,42 +99,29 @@ def get_img_from_path(path):
     return overlay_img
 
 
-def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
+def choose_best_overlay(overlay, src_face_landmarks):
     """
     Args:
         overlay: The overlay image (always facing right)
-        src_face_landmarks: List of MediaPipe NormalizedLandmark objects
-        img_width: Width of source image in pixels
-        img_height: Height of source image in pixels
+        src_face_landmarks: List of MediaPipe NormalizedLandmark objects (with x, y in [0,1])
     """
-
-    def denormalize(x, y):
-        return x * img_width, (1 - y) * img_height  # Fix vertical flip
 
     def get_face_orientation(landmarks):
         try:
-            # Get jaw points (0-16) in pixel coordinates
-            jaw_points = [denormalize(lm.x, lm.y) for lm in landmarks[0:17]]
-            jaw_x = [x for x, y in jaw_points]
-
-            # Calculate face boundaries
+            # Use jaw landmarks (indices 0-16) from normalized coordinates
+            jaw_x = [lm.x for lm in landmarks[0:17]]
             min_x, max_x = min(jaw_x), max(jaw_x)
             face_width = max_x - min_x
-
-            # Get nose tip coordinates (landmark 30)
-            nose_tip = denormalize(landmarks[30].x, landmarks[30].y)
-
-            # Calculate face center (horizontal midline)
             horizontal_center = (min_x + max_x) / 2
 
-            # Calculate horizontal offset from center
-            offset = nose_tip[0] - horizontal_center
-            offset_ratio = offset / face_width
-            logging.debug(f"Min x: {min_x:.2f}, Max x: {max_x:.2f} Nose tip: {nose_tip:.2f}")
-            logging.debug(f"Landmarks nose {landmarks[30].x}, {landmarks[30].y}")
+            # Use landmark 30 (nose tip) from normalized coordinates
+            nose_tip_x = landmarks[30].x
 
-            # Determine orientation with adaptive threshold
-            orientation_threshold = 0.15  # Increased threshold to 15%
+            # Compute the relative horizontal offset
+            offset = nose_tip_x - horizontal_center
+            offset_ratio = offset / face_width
+
+            orientation_threshold = 0.15  # Adjust threshold if needed
             logging.debug(f"Nose offset: {offset_ratio:.2f}, Threshold: {orientation_threshold:.2f}")
 
             if offset_ratio < -orientation_threshold:
@@ -147,24 +134,22 @@ def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
             logging.error(f"Orientation detection error: {str(e)}")
             return "center"
 
-    # Get source face orientation
+    # Get source face orientation based on jaw and nose
     src_orientation = get_face_orientation(src_face_landmarks)
+    # If the face is turned left (nose tip is left of the jaw center), we want to flip the overlay.
+    should_flip = (src_orientation == "left")
 
-    should_flip = src_orientation == "left"
-
-    # Add confidence-based fallback
+    # Fallback: if orientation is "center", use the eyes
     if src_orientation == "center":
         try:
-            # Calculate eye landmarks (points 33 and 263)
-            left_eye = denormalize(src_face_landmarks[33].x, src_face_landmarks[33].y)
-            right_eye = denormalize(src_face_landmarks[263].x, src_face_landmarks[263].y)
+            # Use eye landmarks (33 for left eye and 263 for right eye)
+            left_eye_x = src_face_landmarks[33].x
+            right_eye_x = src_face_landmarks[263].x
 
-            # Calculate horizontal eye midpoint
-            eye_center_x = (left_eye[0] + right_eye[0]) / 2
-            face_center_x = img_width / 2
+            eye_center_x = (left_eye_x + right_eye_x) / 2
+            face_center_x = 0.5  # In normalized coordinates, the horizontal center is 0.5
 
-            should_flip = eye_center_x > face_center_x
-
+            should_flip = (eye_center_x > face_center_x)
         except Exception as e:
             logging.error(f"Eye fallback error: {str(e)}")
             should_flip = False
