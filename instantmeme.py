@@ -103,41 +103,36 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     overlay_faces = get_faces(overlay, no_of_faces=1)
     overlay_points = get_specific_points_on_faces(overlay, overlay_faces)
 
-    # Convert to numpy arrays for easier manipulation
+    # Convert to numpy arrays
     src_left = np.array(src_eye_points[0])
     src_right = np.array(src_eye_points[1])
-    ovr_left = np.array(overlay_points[0][0])
-    ovr_right = np.array(overlay_points[0][1])
+    ovr_left = np.array(overlay_points[0][0])  # Overlay's "left" eye (image's right side)
+    ovr_right = np.array(overlay_points[0][1]) # Overlay's "right" eye (image's left side)
 
-    # Calculate eye vectors
+    # Swap overlay eyes to match viewer's perspective (overlay inherently faces right)
+    ovr_left_viewer, ovr_right_viewer = ovr_right, ovr_left
+
+    # Calculate vectors
     src_vector = src_right - src_left
-    ovr_vector = ovr_right - ovr_left
+    ovr_vector_original = ovr_right_viewer - ovr_left_viewer  # Corrected viewer perspective
 
-    # Calculate angle difference using vector dot product
-    cos_theta = np.dot(src_vector, ovr_vector) / (np.linalg.norm(src_vector) * np.linalg.norm(ovr_vector))
-    angle = np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
+    # Calculate flipped overlay vector (mirror horizontally)
+    ovr_vector_flipped = -ovr_vector_original  # Equivalent to flipping the image
 
-    src_dx = src_vector[0]
-    ovr_dx = ovr_vector[0]
-    direction_match = np.sign(src_dx) == np.sign(ovr_dx)
+    # Calculate angles for both orientations
+    def calculate_angle(vec1, vec2):
+        cos_theta = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+        return np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
 
-    should_flip = False
-    if not direction_match:
-        # Check if vectors are significantly opposite (angle close to 180)
-        if angle > 160:  # Very large angle, almost opposite
-            should_flip = True
-        # Check for moderate angles with significant horizontal mismatch
-        elif angle > 90 and abs(src_dx) > 50 and abs(ovr_dx) > 50:
-            should_flip = True
+    angle_original = calculate_angle(src_vector, ovr_vector_original)
+    angle_flipped = calculate_angle(src_vector, ovr_vector_flipped)
+
+    # Choose the orientation with the smaller angle
+    should_flip = angle_flipped < angle_original
 
     # Log for debugging
-    logging.info(f"Angle difference: {angle} degrees")
-    logging.info(f"Source vector: {src_vector}")
-    logging.info(f"Overlay vector: {ovr_vector}")
-    logging.info(f"Direction match: {direction_match}")
+    logging.info(f"Angle (original): {angle_original}°, Angle (flipped): {angle_flipped}°")
     logging.info(f"Should flip: {should_flip}")
-    logging.info(f"Overlay left eye: {ovr_left}, Overlay right eye: {ovr_right}")
-    logging.info(f"Source left eye: {src_left}, Source right eye: {src_right}")
 
     return cv2.flip(overlay, 1) if should_flip else overlay
 
