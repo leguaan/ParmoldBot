@@ -137,19 +137,21 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     # Combine conditions for reliable flipping
     should_flip = False
 
-    # Condition 1: Significant angle difference or vertical mismatch
-    if abs(angle) > 30:  # If angle difference is greater than 30, flip the overlay
-        logging.info("Should flip: True (due to angle difference > 30 degrees)")
+    # Condition 1: Significant angle difference (greater than 90°) and direction mismatch
+    if abs(angle) > 90 and not direction_match:
+        logging.info("Should flip: True (due to angle difference > 90 degrees and direction mismatch)")
         should_flip = True
-    elif abs(angle) < 15:  # If the angle difference is small
+
+    # Condition 2: Moderate angle difference (less than 30°) with vertical mismatch
+    elif abs(angle) < 30:
         # Only flip if there is a significant vertical mismatch
         if abs(src_vector[1]) > abs(ovr_vector[1]) * 0.5:
             logging.info("Should flip: True (due to vertical mismatch in small angle case)")
             should_flip = True
 
-    # Condition 2: If the direction is opposite
-    if not direction_match and abs(angle) > 45:
-        logging.info("Should flip: True (due to direction mismatch and large angle)")
+    # Condition 3: Direction mismatch with moderate angle difference (45° to 90°)
+    elif not direction_match and 45 <= abs(angle) <= 90:
+        logging.info("Should flip: True (due to direction mismatch and moderate angle)")
         should_flip = True
 
     if not should_flip:
