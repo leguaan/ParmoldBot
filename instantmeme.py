@@ -99,16 +99,37 @@ def get_img_from_path(path):
 
 
 def choose_best_overlay_simple(overlay, src_eye_points):
-    # Simplified geometric flip detection
+    # Get overlay facial points with validation
     overlay_faces = get_faces(overlay, no_of_faces=1)
     overlay_points = get_specific_points_on_faces(overlay, overlay_faces)
 
-    # Calculate source and overlay eye directions
-    src_dx = src_eye_points[1][0] - src_eye_points[0][0]  # right.x - left.x
-    overlay_dx = overlay_points[0][1][0] - overlay_points[0][0][0]
+    # Convert to numpy arrays
+    src_left = np.array(src_eye_points[0])
+    src_right = np.array(src_eye_points[1])
+    ovr_left = np.array(overlay_points[0][0])
+    ovr_right = np.array(overlay_points[0][1])
 
-    # Flip if eye directions mismatch
-    return cv2.flip(overlay, 1) if (src_dx * overlay_dx) < 0 else overlay
+    # Calculate eye vectors
+    src_vector = src_right - src_left
+    ovr_vector = ovr_right - ovr_left
+
+    # Calculate angle difference using vector dot product
+    cos_theta = np.dot(src_vector, ovr_vector) / (np.linalg.norm(src_vector) * np.linalg.norm(ovr_vector))
+    angle = np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
+
+    # Calculate horizontal direction similarity
+    src_dx = src_vector[0]
+    ovr_dx = ovr_vector[0]
+    direction_match = np.sign(src_dx) == np.sign(ovr_dx)
+
+    # Combine conditions for reliable flipping
+    should_flip = False
+    if abs(angle) > 90:  # Vectors facing opposite directions
+        should_flip = True
+    elif not direction_match and abs(angle) > 45:  # Partial mismatch
+        should_flip = True
+
+    return cv2.flip(overlay, 1) if should_flip else overlay
 
 
 async def get_img_from_attachment(attachment):
