@@ -50,7 +50,7 @@ def draw_overlays_on_faces(img, faces):
 
         overlay = get_img_from_path(overlay_path)
         overlay = transform_overlay(img, overlay)
-        best_overlay = choose_best_overlay_simple(overlay, face)
+        best_overlay = choose_best_overlay(overlay, face.landmark, img.shape[1], img.shape[0])
         overlay_faces = get_faces(best_overlay, no_of_faces=1)
         points_on_overlay_faces = get_specific_points_on_faces(best_overlay, overlay_faces)
 
@@ -98,41 +98,51 @@ def get_img_from_path(path):
     return overlay_img
 
 
-def choose_best_overlay_simple(overlay, src_eye_points):
-    # Get overlay facial points
-    overlay_faces = get_faces(overlay, no_of_faces=1)
-    overlay_points = get_specific_points_on_faces(overlay, overlay_faces)
+def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
+    """
+    Args:
+        overlay: The overlay image (always facing right)
+        src_face_landmarks: Source face landmarks in MediaPipe's normalized coordinates
+        img_width: Width of source image in pixels
+        img_height: Height of source image in pixels
+    """
+    def denormalize(x, y):
+        return int(x * img_width), int(y * img_height)
 
-    # Convert to numpy arrays
-    src_left = np.array(src_eye_points[0])
-    src_right = np.array(src_eye_points[1])
-    ovr_left = np.array(overlay_points[0][0])  # Image's right (viewer's left)
-    ovr_right = np.array(overlay_points[0][1])  # Image's left (viewer's right)
+    def get_face_orientation(landmarks):
+        # Convert jaw points to pixel coordinates
+        jaw = [denormalize(lm.x, lm.y) for lm in landmarks[0:17]]
+        nose_tip = denormalize(landmarks[30].x, landmarks[30].y)
 
-    # Swap eyes to match viewer's perspective (overlay faces right)
-    ovr_left_viewer = ovr_right  # Viewer's left is image's left eye
-    ovr_right_viewer = ovr_left  # Viewer's right is image's right eye
+        # Calculate face direction vector
+        jaw_x = [p[0] for p in jaw]
+        jaw_center_x = (max(jaw_x) + min(jaw_x)) // 2
+        face_direction_x = nose_tip[0] - jaw_center_x
 
-    # Calculate vectors
-    src_vector = src_right - src_left
-    ovr_vector_original = ovr_right_viewer - ovr_left_viewer
+        # Calculate horizontal orientation threshold (5% of face width)
+        face_width = max(jaw_x) - min(jaw_x)
+        orientation_threshold = face_width * 0.05
 
-    # Calculate angles (for logging)
-    def calculate_angle(vec1, vec2):
-        cos_theta = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-        return np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
+        if face_direction_x < -orientation_threshold:
+            return "left"
+        elif face_direction_x > orientation_threshold:
+            return "right"
+        return "center"
 
-    angle_original = calculate_angle(src_vector, ovr_vector_original)
-    angle_flipped = calculate_angle(src_vector, -ovr_vector_original)
+    # Determine source face orientation
+    src_orientation = get_face_orientation(src_face_landmarks)
 
-    # Determine flip based on direction (horizontal sign)
-    src_dx = src_vector[0]
-    ovr_dx = ovr_vector_original[0]
-    should_flip = (np.sign(src_dx) != np.sign(ovr_dx))
+    # Flip overlay only if source faces left
+    should_flip = src_orientation == "left"
 
-    # Logging
-    logging.info(f"Source vector: {src_vector}, Overlay original vector: {ovr_vector_original}")
-    logging.info(f"Angle (original): {angle_original}°, Angle (flipped): {angle_flipped}°")
+    # Fallback for centered faces using eye landmarks
+    if src_orientation == "center":
+        left_eye = np.mean([denormalize(lm.x, lm.y) for lm in src_face_landmarks[36:42]], axis=0)
+        right_eye = np.mean([denormalize(lm.x, lm.y) for lm in src_face_landmarks[42:48]], axis=0)
+        eye_slope = (right_eye[1] - left_eye[1]) / (right_eye[0] - left_eye[0] + 1e-6)
+        should_flip = eye_slope < -0.15  # More conservative slope threshold
+
+    logging.info(f"Source orientation: {src_orientation}")
     logging.info(f"Should flip: {should_flip}")
 
     return cv2.flip(overlay, 1) if should_flip else overlay
