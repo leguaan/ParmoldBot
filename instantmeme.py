@@ -50,7 +50,7 @@ def draw_overlays_on_faces(img, faces):
 
         overlay = get_img_from_path(overlay_path)
         overlay = transform_overlay(img, overlay)
-        best_overlay = choose_best_overlay(overlay, face.landmark, img.shape[1], img.shape[0])
+        best_overlay = choose_best_overlay(overlay, faces.multi_face_landmarks, img.shape[1], img.shape[0])
         overlay_faces = get_faces(best_overlay, no_of_faces=1)
         points_on_overlay_faces = get_specific_points_on_faces(best_overlay, overlay_faces)
 
