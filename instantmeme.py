@@ -44,13 +44,14 @@ async def try_handle_instant_meme(message):
 def draw_overlays_on_faces(img, faces):
     points_on_faces = get_specific_points_on_faces(img, faces)
 
-    for face in points_on_faces:
+    for idx, face in enumerate(points_on_faces):
         overlay_filename = random.choice(os.listdir(OVERLAYS_FOLDER))
         overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
 
         overlay = get_img_from_path(overlay_path)
         overlay = transform_overlay(img, overlay)
-        best_overlay = choose_best_overlay(overlay, faces.multi_face_landmarks, img.shape[1], img.shape[0])
+        face_landmarks = faces.multi_face_landmarks[idx].landmark
+        best_overlay = choose_best_overlay(overlay, face_landmarks, img.shape[1], img.shape[0])
         overlay_faces = get_faces(best_overlay, no_of_faces=1)
         points_on_overlay_faces = get_specific_points_on_faces(best_overlay, overlay_faces)
 
@@ -99,13 +100,6 @@ def get_img_from_path(path):
 
 
 def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
-    """
-    Args:
-        overlay: The overlay image (always facing right)
-        src_face_landmarks: Source face landmarks in MediaPipe's normalized coordinates
-        img_width: Width of source image in pixels
-        img_height: Height of source image in pixels
-    """
     def denormalize(x, y):
         return int(x * img_width), int(y * img_height)
 
