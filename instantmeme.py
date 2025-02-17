@@ -100,45 +100,76 @@ def get_img_from_path(path):
 
 
 def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
+    """
+    Args:
+        overlay: The overlay image (always facing right)
+        src_face_landmarks: List of MediaPipe NormalizedLandmark objects
+        img_width: Width of source image in pixels
+        img_height: Height of source image in pixels
+    """
+
     def denormalize(x, y):
-        return int(x * img_width), int(y * img_height)
+        return x * img_width, y * img_height
 
     def get_face_orientation(landmarks):
-        # Convert jaw points to pixel coordinates
-        jaw = [denormalize(lm.x, lm.y) for lm in landmarks[0:17]]
-        nose_tip = denormalize(landmarks[30].x, landmarks[30].y)
+        try:
+            # Get jaw points (0-16) in pixel coordinates
+            jaw_points = [denormalize(lm.x, lm.y) for lm in landmarks[0:17]]
+            jaw_x = [x for x, y in jaw_points]
 
-        # Calculate face direction vector
-        jaw_x = [p[0] for p in jaw]
-        jaw_center_x = (max(jaw_x) + min(jaw_x)) // 2
-        face_direction_x = nose_tip[0] - jaw_center_x
+            # Calculate face boundaries
+            min_x, max_x = min(jaw_x), max(jaw_x)
+            face_width = max_x - min_x
 
-        # Calculate horizontal orientation threshold (5% of face width)
-        face_width = max(jaw_x) - min(jaw_x)
-        orientation_threshold = face_width * 0.05
+            # Get nose tip coordinates (landmark 30)
+            nose_tip = denormalize(landmarks[30].x, landmarks[30].y)
 
-        if face_direction_x < -orientation_threshold:
-            return "left"
-        elif face_direction_x > orientation_threshold:
-            return "right"
-        return "center"
+            # Calculate face center (vertical midline)
+            vertical_center = (min_x + max_x) / 2
 
-    # Determine source face orientation
+            # Calculate horizontal offset from center
+            offset = nose_tip[0] - vertical_center
+            offset_ratio = offset / face_width
+
+            # Determine orientation with adaptive threshold
+            orientation_threshold = 0.1  # 10% of face width
+            logging.debug(f"Nose offset: {offset_ratio:.2f}, Threshold: {orientation_threshold:.2f}")
+
+            if offset_ratio < -orientation_threshold:
+                return "left"
+            elif offset_ratio > orientation_threshold:
+                return "right"
+            return "center"
+
+        except Exception as e:
+            logging.error(f"Orientation detection error: {str(e)}")
+            return "center"
+
+    # Get source face orientation
     src_orientation = get_face_orientation(src_face_landmarks)
 
-    # Flip overlay only if source faces left
+    # Flip logic - only flip if source is facing left
     should_flip = src_orientation == "left"
 
-    # Fallback for centered faces using eye landmarks
+    # Add confidence-based fallback
     if src_orientation == "center":
-        left_eye = np.mean([denormalize(lm.x, lm.y) for lm in src_face_landmarks[36:42]], axis=0)
-        right_eye = np.mean([denormalize(lm.x, lm.y) for lm in src_face_landmarks[42:48]], axis=0)
-        eye_slope = (right_eye[1] - left_eye[1]) / (right_eye[0] - left_eye[0] + 1e-6)
-        should_flip = eye_slope < -0.15  # More conservative slope threshold
+        try:
+            # Calculate eye landmarks (points 33 and 263)
+            left_eye = denormalize(src_face_landmarks[33].x, src_face_landmarks[33].y)
+            right_eye = denormalize(src_face_landmarks[263].x, src_face_landmarks[263].y)
 
-    logging.info(f"Source orientation: {src_orientation}")
-    logging.info(f"Should flip: {should_flip}")
+            # Calculate horizontal eye alignment
+            eye_slope = (right_eye[1] - left_eye[1]) / (right_eye[0] - left_eye[0] + 1e-6)
+            logging.debug(f"Eye slope: {eye_slope:.2f}")
 
+            # Flip if eyes are tilted downward from left to right
+            should_flip = eye_slope < -0.1
+
+        except Exception as e:
+            logging.error(f"Eye fallback error: {str(e)}")
+            should_flip = False
+
+    logging.info(f"Final decision - Orientation: {src_orientation}, Should flip: {should_flip}")
     return cv2.flip(overlay, 1) if should_flip else overlay
 
 
