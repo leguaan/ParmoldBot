@@ -110,12 +110,12 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     ovr_right = np.array(overlay_points[0][1])  # Image's left (viewer's right)
 
     # Swap eyes to match viewer's perspective (overlay faces right)
-    ovr_left_viewer = ovr_right  # Viewer's left is image's right
-    ovr_right_viewer = ovr_left  # Viewer's right is image's left
+    ovr_left_viewer = ovr_right  # Viewer's left is image's left eye
+    ovr_right_viewer = ovr_left  # Viewer's right is image's right eye
 
     # Calculate vectors
     src_vector = src_right - src_left
-    ovr_vector_original = ovr_right_viewer - ovr_left_viewer  # Correct direction
+    ovr_vector_original = ovr_left_viewer - ovr_right_viewer  # Fix: left - right
 
     # Calculate angles (for logging)
     def calculate_angle(vec1, vec2):
