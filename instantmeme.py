@@ -78,27 +78,29 @@ def draw_overlays_on_faces(img, faces):
         ])
 
         rows, cols = img.shape[:2]
-        transformed_overlay = cv2.warpAffine(best_overlay, M, (cols, rows))
+        transformed_overlay = cv2.warpAffine(
+            best_overlay, M, (cols, rows),
+            flags=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_TRANSPARENT
+        )
 
-        y1, y2 = 0, 0 + transformed_overlay.shape[0]
-        x1, x2 = 0, 0 + transformed_overlay.shape[1]
+        # Improved alpha blending
+        if transformed_overlay.shape[2] == 4:
+            alpha = transformed_overlay[:, :, 3] / 255.0
+            overlay_rgb = transformed_overlay[:, :, :3]
+        else:
+            alpha = np.ones(transformed_overlay.shape[:2], dtype=np.float32)
+            overlay_rgb = transformed_overlay
 
-        alpha_s = transformed_overlay[:, :, 3] / 255.0
-        alpha_l = 1.0 - alpha_s
-
-        for c in range(0, 3):
-            img[y1:y2, x1:x2, c] = (alpha_s * transformed_overlay[:, :, c] +
-                                    alpha_l * img[y1:y2, x1:x2, c])
+        # Blend using matrix operations instead of per-channel
+        img = (alpha[..., np.newaxis] * overlay_rgb +
+               (1 - alpha[..., np.newaxis]) * img).astype(np.uint8)
 
     return img
 
 
 def get_img_from_path(path):
-    overlay_img = cv2.imread(path, -1)
-    flip_vertical = random.choice([True, False])
-    if flip_vertical:
-        overlay_img = cv2.flip(overlay_img, 1)
-    return overlay_img
+    return cv2.imread(path, -1)
 
 
 def choose_best_overlay_simple(overlay, src_eye_points):
