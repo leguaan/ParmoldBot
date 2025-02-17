@@ -100,61 +100,50 @@ def get_img_from_path(path):
 
 
 def choose_best_overlay(overlay, src_face_landmarks):
-    """
-    Args:
-        overlay: The overlay image (always facing right)
-        src_face_landmarks: List of MediaPipe NormalizedLandmark objects (with x, y in [0,1])
-    """
-
     def get_face_orientation(landmarks):
         try:
-            # Use jaw landmarks (indices 0-16) from normalized coordinates
-            jaw_x = [lm.x for lm in landmarks[0:17]]
-            min_x, max_x = min(jaw_x), max(jaw_x)
+            # Use raw normalized coordinates (0-1 range)
+            jaw_x = [lm.x for lm in landmarks[0:17]]  # Jaw points (0-16)
+            min_x = min(jaw_x)
+            max_x = max(jaw_x)
             face_width = max_x - min_x
-            horizontal_center = (min_x + max_x) / 2
 
-            # Use landmark 30 (nose tip) from normalized coordinates
-            nose_tip_x = landmarks[30].x
+            nose_x = landmarks[4].x
 
-            # Compute the relative horizontal offset
-            offset = nose_tip_x - horizontal_center
+            face_center = (min_x + max_x) / 2
+            offset = nose_x - face_center
             offset_ratio = offset / face_width
 
-            orientation_threshold = 0.15  # Adjust threshold if needed
-            logging.debug(f"Nose offset: {offset_ratio:.2f}, Threshold: {orientation_threshold:.2f}")
+            logging.debug(f"Nose offset ratio: {offset_ratio:.2f}")
 
-            if offset_ratio < -orientation_threshold:
+            if offset_ratio < -0.15:  # Strong left orientation
                 return "left"
-            elif offset_ratio > orientation_threshold:
+            elif offset_ratio > 0.15:  # Strong right orientation
                 return "right"
             return "center"
 
         except Exception as e:
-            logging.error(f"Orientation detection error: {str(e)}")
+            logging.error(f"Orientation error: {str(e)}")
             return "center"
 
-    # Get source face orientation based on jaw and nose
+    # Get source face orientation
     src_orientation = get_face_orientation(src_face_landmarks)
-    # If the face is turned left (nose tip is left of the jaw center), we want to flip the overlay.
-    should_flip = (src_orientation == "left")
 
-    # Fallback: if orientation is "center", use the eyes
+    # Flip logic - overlay faces right by default
+    should_flip = src_orientation == "left"
+
+    # Fallback for centered faces using eye landmarks
     if src_orientation == "center":
         try:
-            # Use eye landmarks (33 for left eye and 263 for right eye)
-            left_eye_x = src_face_landmarks[33].x
-            right_eye_x = src_face_landmarks[263].x
-
-            eye_center_x = (left_eye_x + right_eye_x) / 2
-            face_center_x = 0.5  # In normalized coordinates, the horizontal center is 0.5
-
-            should_flip = (eye_center_x > face_center_x)
+            # Landmarks 33 (right eye inner) and 263 (left eye inner)
+            right_eye = src_face_landmarks[33].x
+            left_eye = src_face_landmarks[263].x
+            should_flip = left_eye > right_eye  # Eyes cross center
         except Exception as e:
             logging.error(f"Eye fallback error: {str(e)}")
             should_flip = False
 
-    logging.info(f"Final decision - Orientation: {src_orientation}, Should flip: {should_flip}")
+    logging.info(f"Orientation: {src_orientation}, Flip: {should_flip}")
     return cv2.flip(overlay, 1) if should_flip else overlay
 
 
