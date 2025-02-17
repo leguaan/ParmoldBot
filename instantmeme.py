@@ -56,33 +56,35 @@ def draw_overlays_on_faces(img, faces):
         if None in face or len(face) < 2:
             continue
 
-        # Get random overlay with validation
-        overlay_filename = random.choice(os.listdir(OVERLAYS_FOLDER))
-        overlay_path = os.path.join(OVERLAYS_FOLDER, overlay_filename)
-
-        overlay = get_img_from_path(overlay_path)
-        if overlay is None or overlay.size == 0:
-            continue
-
-        # Transform and validate overlay
         try:
+            # 1. Overlay loading with validation
+            overlay = get_img_from_path(os.path.join(
+                OVERLAYS_FOLDER,
+                random.choice([f for f in os.listdir(OVERLAYS_FOLDER)
+                               if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+            ))
+            if overlay is None:
+                continue
+
+            # 2. Transform and orient overlay
             overlay = transform_overlay(img, overlay)
             best_overlay = choose_best_overlay_simple(overlay, face)
-            if best_overlay is None or best_overlay.size == 0:
+            if best_overlay.size == 0:
                 continue
 
-            # Face detection on overlay
-            overlay_faces = get_faces(best_overlay, no_of_faces=1)
-            points_on_overlay = get_specific_points_on_faces(best_overlay, overlay_faces)
-            if not points_on_overlay or None in points_on_overlay[0]:
+            # 3. Calculate transformation matrix
+            overlay_points = get_specific_points_on_faces(
+                best_overlay,
+                get_faces(best_overlay, no_of_faces=1)
+            )
+            if not overlay_points or None in overlay_points[0]:
                 continue
 
-            # Calculate transformation matrix
-            p1_src = np.array(points_on_overlay[0][0])
-            p2_src = np.array(points_on_overlay[0][1])
-            p1_dst = np.array(face[0])
-            p2_dst = np.array(face[1])
+            # Extract source and target points
+            p1_src, p2_src = np.array(overlay_points[0][:2])
+            p1_dst, p2_dst = np.array(face[:2])
 
+            # Build transformation matrix
             A = np.array([
                 [p1_src[0], -p1_src[1], 1, 0],
                 [p1_src[1], p1_src[0], 0, 1],
@@ -90,45 +92,41 @@ def draw_overlays_on_faces(img, faces):
                 [p2_src[1], p2_src[0], 0, 1]
             ])
             b = np.array([p1_dst[0], p1_dst[1], p2_dst[0], p2_dst[1]])
+            a, b_param, tx, ty = np.linalg.lstsq(A, b, rcond=None)[0]
 
-            params = np.linalg.lstsq(A, b, rcond=None)[0]
-            a, b_param, tx, ty = params
-
-            M = np.array([
-                [a, -b_param, tx],
-                [b_param, a, ty]
-            ])
-
-            # Warp with bounds checking
+            # 4. Apply transformation with bounds checking
             rows, cols = img.shape[:2]
-            transformed_overlay = cv2.warpAffine(
+            M = np.array([[a, -b_param, tx], [b_param, a, ty]])
+
+            # Calculate valid region
+            h, w = best_overlay.shape[:2]
+            pts = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1]], dtype=np.float32)
+            warped_pts = cv2.transform(pts.reshape(1, -1, 2), M).reshape(-1, 2)
+
+            # Create mask for visible area
+            mask = np.zeros((rows, cols), dtype=np.uint8)
+            cv2.fillConvexPoly(mask, np.clip(warped_pts, 0, [cols - 1, rows - 1]).astype(int), 1)
+
+            # Warp overlay with transparency
+            transformed = cv2.warpAffine(
                 best_overlay, M, (cols, rows),
                 flags=cv2.INTER_LINEAR,
                 borderMode=cv2.BORDER_TRANSPARENT
             )
 
-            # Alpha blending with validation
-            if transformed_overlay.shape[2] == 4:
-                alpha = transformed_overlay[:, :, 3] / 255.0
-                alpha = alpha[..., np.newaxis]
-                overlay_rgb = transformed_overlay[:, :, :3]
-            else:
-                alpha = np.ones(transformed_overlay.shape[:2] + (1,), dtype=np.float32)
-                overlay_rgb = transformed_overlay if transformed_overlay.ndim == 3 \
-                    else cv2.cvtColor(transformed_overlay, cv2.COLOR_GRAY2BGR)
+            # 5. Alpha blending with mask
+            alpha = (transformed[..., 3] / 255.0 if transformed.shape[2] == 4
+                     else np.ones(transformed.shape[:2], dtype=np.float32))
+            alpha = alpha * (mask / 255.0)  # Combine masks
 
-            # Ensure matching dimensions
-            if overlay_rgb.shape[:2] != img.shape[:2]:
-                continue
-
-            # Final blending with clipping
-            img = np.clip(
-                alpha * overlay_rgb + (1 - alpha) * img,
-                0, 255
+            # Final blending with broadcasting
+            img = (
+                    alpha[..., np.newaxis] * transformed[..., :3] +
+                    (1 - alpha[..., np.newaxis]) * img
             ).astype(np.uint8)
 
         except Exception as e:
-            logging.error(f"Overlay processing failed: {str(e)}")
+            logging.error(f"Overlay error: {str(e)}")
             continue
 
     return img
@@ -137,14 +135,16 @@ def draw_overlays_on_faces(img, faces):
 def get_img_from_path(path):
     overlay = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if overlay is None:
+        print(f"Failed to load overlay: {path}")
         return None
 
-    # Handle different image types
+    # Preserve existing alpha channel
     if overlay.ndim == 2:  # Grayscale
         overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2BGRA)
-    elif overlay.shape[2] not in [2, 4]:  # BGR
+    elif overlay.shape[2] == 3:  # BGR
         overlay = cv2.cvtColor(overlay, cv2.COLOR_BGR2BGRA)
 
+    print(f"Loaded overlay: {path} | Shape: {overlay.shape} | Channels: {overlay.shape[2]}")
     return overlay
 
 
