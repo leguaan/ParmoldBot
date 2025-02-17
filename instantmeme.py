@@ -126,24 +126,37 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     ovr_dx = ovr_vector[0]
     direction_match = np.sign(src_dx) == np.sign(ovr_dx)
 
+    # Log the computed values
+    logging.info(f"Angle difference: {angle} degrees")
+    logging.info(f"Source vector: {src_vector}")
+    logging.info(f"Overlay vector: {ovr_vector}")
+    logging.info(f"Source left eye: {src_left}, Source right eye: {src_right}")
+    logging.info(f"Overlay left eye: {ovr_left}, Overlay right eye: {ovr_right}")
+    logging.info(f"Direction match: {direction_match}")
+
     # Combine conditions for reliable flipping
     should_flip = False
 
-    # If there's a large enough angle difference or a significant vertical mismatch
-    if abs(angle) > 10 or abs(src_vector[1]) > abs(ovr_vector[1]) * 0.5:
+    # Condition 1: Significant angle difference or vertical mismatch
+    if abs(angle) > 30:  # If angle difference is greater than 30, flip the overlay
+        logging.info("Should flip: True (due to angle difference > 30 degrees)")
         should_flip = True
+    elif abs(angle) < 15:  # If the angle difference is small
+        # Only flip if there is a significant vertical mismatch
+        if abs(src_vector[1]) > abs(ovr_vector[1]) * 0.5:
+            logging.info("Should flip: True (due to vertical mismatch in small angle case)")
+            should_flip = True
 
-    # If vectors are aligned horizontally but there's a large vertical mismatch
-    if direction_match and abs(src_vector[1]) > abs(ovr_vector[1]) * 0.5:
-        should_flip = True
-
-    # If directions are opposite, we should flip
+    # Condition 2: If the direction is opposite
     if not direction_match and abs(angle) > 45:
+        logging.info("Should flip: True (due to direction mismatch and large angle)")
         should_flip = True
+
+    if not should_flip:
+        logging.info("Should flip: False")
 
     # Flip overlay if necessary
     return cv2.flip(overlay, 1) if should_flip else overlay
-
 
 
 async def get_img_from_attachment(attachment):
