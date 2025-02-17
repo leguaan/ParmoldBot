@@ -109,7 +109,7 @@ def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
     """
 
     def denormalize(x, y):
-        return x * img_width, y * img_height
+        return x * img_width, (1 - y) * img_height  # Fix vertical flip
 
     def get_face_orientation(landmarks):
         try:
@@ -124,15 +124,15 @@ def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
             # Get nose tip coordinates (landmark 30)
             nose_tip = denormalize(landmarks[30].x, landmarks[30].y)
 
-            # Calculate face center (vertical midline)
-            vertical_center = (min_x + max_x) / 2
+            # Calculate face center (horizontal midline)
+            horizontal_center = (min_x + max_x) / 2
 
             # Calculate horizontal offset from center
-            offset = nose_tip[0] - vertical_center
+            offset = nose_tip[0] - horizontal_center
             offset_ratio = offset / face_width
 
             # Determine orientation with adaptive threshold
-            orientation_threshold = 0.1  # 10% of face width
+            orientation_threshold = 0.15  # Increased threshold to 15%
             logging.debug(f"Nose offset: {offset_ratio:.2f}, Threshold: {orientation_threshold:.2f}")
 
             if offset_ratio < -orientation_threshold:
@@ -148,7 +148,6 @@ def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
     # Get source face orientation
     src_orientation = get_face_orientation(src_face_landmarks)
 
-    # Flip logic - only flip if source is facing left
     should_flip = src_orientation == "left"
 
     # Add confidence-based fallback
@@ -158,12 +157,11 @@ def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
             left_eye = denormalize(src_face_landmarks[33].x, src_face_landmarks[33].y)
             right_eye = denormalize(src_face_landmarks[263].x, src_face_landmarks[263].y)
 
-            # Calculate horizontal eye alignment
-            eye_slope = (right_eye[1] - left_eye[1]) / (right_eye[0] - left_eye[0] + 1e-6)
-            logging.debug(f"Eye slope: {eye_slope:.2f}")
+            # Calculate horizontal eye midpoint
+            eye_center_x = (left_eye[0] + right_eye[0]) / 2
+            face_center_x = img_width / 2
 
-            # Flip if eyes are tilted downward from left to right
-            should_flip = eye_slope < -0.1
+            should_flip = eye_center_x > face_center_x
 
         except Exception as e:
             logging.error(f"Eye fallback error: {str(e)}")
