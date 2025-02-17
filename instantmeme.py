@@ -103,15 +103,11 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     overlay_faces = get_faces(overlay, no_of_faces=1)
     overlay_points = get_specific_points_on_faces(overlay, overlay_faces)
 
-    # Convert to numpy arrays
+    # Convert to numpy arrays for easier manipulation
     src_left = np.array(src_eye_points[0])
     src_right = np.array(src_eye_points[1])
     ovr_left = np.array(overlay_points[0][0])
     ovr_right = np.array(overlay_points[0][1])
-
-    # Flip source eye points horizontally to match the person's perspective
-    src_left = np.array([overlay.shape[1] - src_left[0], src_left[1]])  # Mirror left eye
-    src_right = np.array([overlay.shape[1] - src_right[0], src_right[1]])  # Mirror right eye
 
     # Calculate eye vectors
     src_vector = src_right - src_left
@@ -121,43 +117,32 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     cos_theta = np.dot(src_vector, ovr_vector) / (np.linalg.norm(src_vector) * np.linalg.norm(ovr_vector))
     angle = np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
 
-    # Calculate horizontal direction similarity
+    # Calculate direction (horizontal component of vectors)
     src_dx = src_vector[0]
     ovr_dx = ovr_vector[0]
+
+    # Determine if direction is reversed
     direction_match = np.sign(src_dx) == np.sign(ovr_dx)
 
-    # Log the computed values
+    # We need a significant angle difference and reversed direction to decide if we need to flip
+    should_flip = False
+    if not direction_match:  # Significant direction mismatch
+        if abs(angle) > 90:  # Large angle difference
+            should_flip = True
+        elif abs(angle) > 60:  # Smaller angle difference but significant mismatch
+            # Allow a flip only if both vectors are sufficiently misaligned
+            if abs(src_dx) > 50:
+                should_flip = True
+
+    # Log for debugging
     logging.info(f"Angle difference: {angle} degrees")
     logging.info(f"Source vector: {src_vector}")
     logging.info(f"Overlay vector: {ovr_vector}")
-    logging.info(f"Source left eye: {src_left}, Source right eye: {src_right}")
-    logging.info(f"Overlay left eye: {ovr_left}, Overlay right eye: {ovr_right}")
     logging.info(f"Direction match: {direction_match}")
+    logging.info(f"Should flip: {should_flip}")
+    logging.info(f"Overlay left eye: {ovr_left}, Overlay right eye: {ovr_right}")
+    logging.info(f"Source left eye: {src_left}, Source right eye: {src_right}")
 
-    # Combine conditions for reliable flipping
-    should_flip = False
-
-    # Condition 1: Significant angle difference (greater than 90°) and direction mismatch
-    if abs(angle) > 90 and not direction_match:
-        logging.info("Should flip: True (due to angle difference > 90 degrees and direction mismatch)")
-        should_flip = True
-
-    # Condition 2: Moderate angle difference (less than 30°) with vertical mismatch
-    elif abs(angle) < 30:
-        # Only flip if there is a significant vertical mismatch
-        if abs(src_vector[1]) > abs(ovr_vector[1]) * 0.5:
-            logging.info("Should flip: True (due to vertical mismatch in small angle case)")
-            should_flip = True
-
-    # Condition 3: Direction mismatch with moderate angle difference (45° to 90°)
-    elif not direction_match and 45 <= abs(angle) <= 90:
-        logging.info("Should flip: True (due to direction mismatch and moderate angle)")
-        should_flip = True
-
-    if not should_flip:
-        logging.info("Should flip: False")
-
-    # Flip overlay if necessary
     return cv2.flip(overlay, 1) if should_flip else overlay
 
 
