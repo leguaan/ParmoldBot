@@ -103,32 +103,55 @@ def choose_best_overlay_simple(overlay, src_eye_points):
     overlay_faces = get_faces(overlay, no_of_faces=1)
     overlay_points = get_specific_points_on_faces(overlay, overlay_faces)
 
+    # Check if points are valid
+    if len(overlay_points) == 0 or len(src_eye_points) == 0:
+        logging.info("Error: Invalid eye points detected.")
+        return overlay
+
     # Convert to numpy arrays
     src_left = np.array(src_eye_points[0])
     src_right = np.array(src_eye_points[1])
     ovr_left = np.array(overlay_points[0][0])
     ovr_right = np.array(overlay_points[0][1])
 
+    # Print the eye points for debugging
+    logging.info(f"Source left eye: {src_left}, Source right eye: {src_right}")
+    logging.info(f"Overlay left eye: {ovr_left}, Overlay right eye: {ovr_right}")
+
     # Calculate eye vectors
     src_vector = src_right - src_left
     ovr_vector = ovr_right - ovr_left
 
+    # Print vectors for debugging
+    logging.info(f"Source vector: {src_vector}")
+    logging.info(f"Overlay vector: {ovr_vector}")
+
     # Calculate angle difference using vector dot product
     cos_theta = np.dot(src_vector, ovr_vector) / (np.linalg.norm(src_vector) * np.linalg.norm(ovr_vector))
     angle = np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
+
+    # Print angle for debugging
+    logging.info(f"Angle difference: {angle} degrees")
 
     # Calculate horizontal direction similarity
     src_dx = src_vector[0]
     ovr_dx = ovr_vector[0]
     direction_match = np.sign(src_dx) == np.sign(ovr_dx)
 
+    # Print direction match for debugging
+    logging.info(f"Direction match: {direction_match}")
+
     # Combine conditions for reliable flipping
     should_flip = False
     if abs(angle) > 90:  # Vectors facing opposite directions
         should_flip = True
-    elif not direction_match and abs(angle) > 45:  # Partial mismatch
+    elif not direction_match and abs(angle) > 30:  # Adjusted threshold for partial mismatch
         should_flip = True
 
+    # Print the final decision
+    logging.info(f"Should flip: {should_flip}")
+
+    # Flip overlay if necessary
     return cv2.flip(overlay, 1) if should_flip else overlay
 
 
