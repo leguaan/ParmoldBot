@@ -130,6 +130,8 @@ def choose_best_overlay(overlay, src_face_landmarks, img_width, img_height):
             # Calculate horizontal offset from center
             offset = nose_tip[0] - horizontal_center
             offset_ratio = offset / face_width
+            logging.debug(f"Min x: {min_x:.2f}, Max x: {max_x:.2f} Nose tip: {nose_tip:.2f}")
+            logging.debug(f"Landmarks nose {landmarks[30].x}, {landmarks[30].y}")
 
             # Determine orientation with adaptive threshold
             orientation_threshold = 0.15  # Increased threshold to 15%
