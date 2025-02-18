@@ -446,7 +446,6 @@ async def try_handle_stand(message):
 
     balance, _ = db.get_user_balance(user_id)
     content = (
-        f"🏁 Mäng läbi!\n"
         f"Sinu kaardid: {game.player_hand} (kokku: {player_total})\n"
         f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
         f"{outcome} "
