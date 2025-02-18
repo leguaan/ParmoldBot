@@ -401,8 +401,8 @@ async def try_handle_hit(message):
         content = (
             f"💦 Bust!\n"
             f"Sa võtsid {card}! Sinu kaardid: {game.player_hand} (kokku: {total})\n"
-            f"💸 Kaotasid {game.bet} eurot!"
-            f"Su uus balanss: {balance} eurot"
+            f"💸 Kaotasid {game.bet} eurot! "
+            f"Su uus balanss on {balance} eurot"
         )
         await message.channel.send(content)
         del active_blackjack_games[user_id]
@@ -449,8 +449,8 @@ async def try_handle_stand(message):
         f"🏁 Mäng läbi!\n"
         f"Sinu kaardid: {game.player_hand} (kokku: {player_total})\n"
         f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
-        f"{outcome}"
-        f"Su balanss: {balance} eurot"
+        f"{outcome} "
+        f"Su balanss on {balance} eurot"
     )
     await message.channel.send(content)
     del active_blackjack_games[user_id]
