@@ -428,7 +428,7 @@ async def try_handle_stand(message):
 
     await delete_last_message(message.channel, game.last_message_id)
 
-    dealer_actions = game.dealer_draw()
+    game.dealer_draw()
     player_total = game.player_total
     dealer_total = game.dealer_total
 
@@ -449,7 +449,6 @@ async def try_handle_stand(message):
         f"🏁 **Mäng läbi!**\n"
         f"Sinu kaardid: {game.player_hand} (kokku: {player_total})\n"
         f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
-        f"{chr(10).join(dealer_actions)}\n"
         f"{outcome}\n"
         f"Su uus balanss: {balance} €"
     )
