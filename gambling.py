@@ -372,10 +372,10 @@ async def try_handle_blackjack(message):
         del active_blackjack_games[user_id]
         return
     content = (
-        f"🎉 **Blackjack algas!**\n"
+        f"🎉 Blackjack algas!\n"
         f"Sinu kaardid: {game.player_hand} (kokku: {game.player_total})\n"
         f"Diileri nähtav kaart: {game.dealer_hand[0]}\n"
-        "Kirjuta `$hit`, et võtta kaart või `$stand`, et jääda."
+        "Kirjuta `$hit`, et võtta kaart või `$stand`, et hoida."
     )
     msg = await message.channel.send(content)
     game.last_message_id = msg.id
@@ -399,10 +399,10 @@ async def try_handle_hit(message):
     if total > 21:
         balance, _ = db.get_user_balance(user_id)
         content = (
-            f"💦 **Bust!**\n"
+            f"💦 Bust!\n"
             f"Sa võtsid {card}! Sinu kaardid: {game.player_hand} (kokku: {total})\n"
-            f"Kaotasid {game.bet} eurot! 💸\n"
-            f"Su uus balanss: {balance} €"
+            f"💸 Kaotasid {game.bet} eurot!"
+            f"Su uus balanss: {balance} eurot"
         )
         await message.channel.send(content)
         del active_blackjack_games[user_id]
@@ -433,24 +433,24 @@ async def try_handle_stand(message):
     dealer_total = game.dealer_total
 
     if dealer_total > 21:
-        outcome = f"💦 Diiler bustis! Sa võitsid {game.bet} €!"
+        outcome = f"💦 Diiler bustis! Sa võitsid {game.bet} eurot!"
         db.add_winnings(user_id, game.bet)
     elif player_total > dealer_total:
-        outcome = f"🎉 Sa võitsid {game.bet} €!"
+        outcome = f"🎉 Sa võitsid {game.bet} eurot!"
         db.add_winnings(user_id, game.bet)
     elif player_total == dealer_total:
         outcome = "🤝 Viik! Sa said panuse tagasi."
         db.refund_bet(user_id, game.bet)
     else:
-        outcome = f"💸 Kaotasid {game.bet} €. Diiler võitis!"
+        outcome = f"💸 Kaotasid {game.bet} eurot. Diiler võitis!"
 
     balance, _ = db.get_user_balance(user_id)
     content = (
-        f"🏁 **Mäng läbi!**\n"
+        f"🏁 Mäng läbi!\n"
         f"Sinu kaardid: {game.player_hand} (kokku: {player_total})\n"
         f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
-        f"{outcome}\n"
-        f"Su uus balanss: {balance} €"
+        f"{outcome}"
+        f"Su balanss: {balance} eurot"
     )
     await message.channel.send(content)
     del active_blackjack_games[user_id]
