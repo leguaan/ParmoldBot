@@ -19,7 +19,6 @@ FAILURE_MESSAGES = [
     "HÄÄÄÄ! Varastasin su raha ära! 💸"
 ]
 
-
 BIG_FAILURE_MESSAGES = [
     "Flexisid rottide seas ja jäid kogu rahast ilma!",
     "Maksuamet külmutas su konto maksupettuste tõttu!",
@@ -222,10 +221,13 @@ async def try_handle_beg(message: Message):
     chance = random.random()
     if chance < 0.5:
         if chance < 0.1:
-            balance,_ = db.get_user_balance(user_id);
+            balance, _ = db.get_user_balance(user_id)
             if balance > 0:
-                db.place_bet(user_id, balance);
+                db.place_bet(user_id, balance)
                 await message.channel.send("Kerjasid mustlaselt ja ta lasi kogu su raha rotti!")
+            else:
+                db.add_winnings(user_id, 100)
+            await message.channel.send("Said Petsilt korraliku nutsu, lase edasi tšempion!")
         else:
             db.add_winnings(user_id, 5)
             await message.channel.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
@@ -280,15 +282,14 @@ async def try_handle_bet(message: Message):
     await message.channel.send(f"{result_msg} Su uus balanss on {balance} eurot.")
 
 
-active_blackjack_games = {}  # Maps user_id to game state
+active_blackjack_games = {}  # user_id: {bet, player_cards, dealer_cards, last_msg_id}
 
 
 def draw_card():
-    # Ace is 11; face cards are 10.
     return random.choice([2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11])
 
 
-def compute_hand_total(cards: list) -> int:
+def compute_hand_total(cards):
     total = sum(cards)
     aces = cards.count(11)
     while total > 21 and aces:
@@ -297,118 +298,159 @@ def compute_hand_total(cards: list) -> int:
     return total
 
 
-async def try_handle_blackjack(message: Message):
+async def delete_last_message(channel, message_id):
+    if message_id is None:
+        return
+    try:
+        last_msg = await channel.fetch_message(message_id)
+        await last_msg.delete()
+    except Exception as e:
+        logging.warning(f"Ei õnnestunud kustutada sõnumit {message_id}: {e}")
+
+
+class BlackjackGame:
+    def __init__(self, user_id, bet):
+        self.user_id = user_id
+        self.bet = bet
+        self.player_hand = [draw_card(), draw_card()]
+        self.dealer_hand = [draw_card(), draw_card()]
+        self.last_message_id = None
+
+    @property
+    def player_total(self):
+        return compute_hand_total(self.player_hand)
+
+    @property
+    def dealer_total(self):
+        return compute_hand_total(self.dealer_hand)
+
+    def dealer_draw(self):
+        actions = []
+        while self.dealer_total < 17:
+            card = draw_card()
+            self.dealer_hand.append(card)
+            actions.append(f"Diiler tõmbas {card} (kokku: {self.dealer_total})")
+        return actions
+
+
+async def try_handle_blackjack(message):
     if not message.content.startswith('$blackjack'):
         return
 
     parts = message.content.split()
     if len(parts) != 2:
-        await message.channel.send("Usage: $blackjack <bet>")
+        await message.channel.send("Vale kasutus! Õige kuju: `$blackjack <panus>`")
         return
+
     try:
         bet = int(parts[1])
         if bet <= 0 or bet > MAX_BET:
             raise ValueError
     except ValueError:
-        await message.channel.send(f"Bet must be a positive integer (max {MAX_BET}).")
+        await message.channel.send(f"Panus peab olema positiivne arv (maksimaalselt {MAX_BET}).")
         return
 
     user_id = message.author.id
     if user_id in active_blackjack_games:
-        await message.channel.send("Finish your current blackjack game first!")
+        await message.channel.send("Lõpeta oma praegune mäng enne uue alustamist!")
         return
 
     balance, _ = db.get_user_balance(user_id)
     if bet > balance:
-        await message.channel.send("Not enough funds for that bet!")
+        await message.channel.send("Sul pole piisavalt raha selle panuse jaoks!")
         return
 
     if not db.place_bet(user_id, bet):
-        await message.channel.send("Failed to place bet.")
+        await message.channel.send("Panuse asetamine ebaõnnestus.")
         return
 
-    # Deal initial cards.
-    player_cards = [draw_card(), draw_card()]
-    dealer_cards = [draw_card(), draw_card()]
-    active_blackjack_games[user_id] = {
-        'bet': bet,
-        'player_cards': player_cards,
-        'dealer_cards': dealer_cards,
-    }
-    player_total = compute_hand_total(player_cards)
-    dealer_visible = dealer_cards[0]
-    await message.channel.send(
-        f"Blackjack started!\nYour cards: {player_cards} (total: {player_total}).\n"
-        f"Dealer shows: {dealer_visible}.\n"
-        "Type `$hit` to draw a card or `$stand` to hold."
+    game = BlackjackGame(user_id, bet)
+    active_blackjack_games[user_id] = game
+    if game.player_total == 21:
+        await message.channel.send("🎰 **Blackjack!** Sa võitsid kohe!")
+        db.add_winnings(user_id, int(game.bet * 1.5))
+        del active_blackjack_games[user_id]
+        return
+    content = (
+        f"🎉 **Blackjack algas!** 🃏\n"
+        f"Sinu kaardid: {game.player_hand} (kokku: {game.player_total})\n"
+        f"Diileri nähtav kaart: {game.dealer_hand[0]}\n"
+        "Kirjuta `$hit`, et võtta kaart või `$stand`, et jääda."
     )
+    msg = await message.channel.send(content)
+    game.last_message_id = msg.id
 
 
-async def try_handle_hit(message: Message):
+async def try_handle_hit(message):
     if not message.content.startswith('$hit'):
         return
 
     user_id = message.author.id
-    if user_id not in active_blackjack_games:
-        return  # No active game for this user
+    game = active_blackjack_games.get(user_id)
+    if not game:
+        return
 
-    game = active_blackjack_games[user_id]
+    await delete_last_message(message.channel, game.last_message_id)
+
     card = draw_card()
-    game['player_cards'].append(card)
-    player_total = compute_hand_total(game['player_cards'])
+    game.player_hand.append(card)
+    total = game.player_total
 
-    if player_total > 21:
-        bet = game['bet']
+    if total > 21:
+        balance, _ = db.get_user_balance(user_id)
+        content = (
+            f"💦 **Bust!** 🃏\n"
+            f"Sa võtsid {card}! Sinu kaardid: {game.player_hand} (kokku: {total})\n"
+            f"Kaotasid {game.bet} eurot! 💸\n"
+            f"Su uus balanss: {balance} €"
+        )
+        await message.channel.send(content)
         del active_blackjack_games[user_id]
-        await message.channel.send(
-            f"You drew a {card}. Your cards: {game['player_cards']} (total: {player_total}).\n"
-            f"Bust! You lost {bet}."
-        )
     else:
-        await message.channel.send(
-            f"You drew a {card}. Your cards: {game['player_cards']} (total: {player_total}).\n"
-            "Type `$hit` to draw another card or `$stand` to hold."
+        content = (
+            f"🃏 Sa võtsid kaardi {card}!\n"
+            f"Sinu kaardid: {game.player_hand} (kokku: {total})\n"
+            "Kas võtad veel (`$hit`) või mitte (`$stand`)?"
         )
+        msg = await message.channel.send(content)
+        game.last_message_id = msg.id
 
 
-async def try_handle_stand(message: Message):
+async def try_handle_stand(message):
     if not message.content.startswith('$stand'):
         return
 
     user_id = message.author.id
-    if user_id not in active_blackjack_games:
+    game = active_blackjack_games.get(user_id)
+    if not game:
         return
 
-    game = active_blackjack_games[user_id]
-    bet = game['bet']
-    player_total = compute_hand_total(game['player_cards'])
-    dealer_cards = game['dealer_cards']
-    dealer_total = compute_hand_total(dealer_cards)
-    dealer_actions = ""
+    await delete_last_message(message.channel, game.last_message_id)
 
-    # Dealer reveals hidden card and draws until reaching 17.
-    while dealer_total < 17:
-        card = draw_card()
-        dealer_cards.append(card)
-        dealer_total = compute_hand_total(dealer_cards)
-        dealer_actions += f" Dealer draws {card}."
+    dealer_actions = game.dealer_draw()
+    player_total = game.player_total
+    dealer_total = game.dealer_total
 
-    # Determine outcome.
-    if dealer_total > 21 or player_total > dealer_total:
-        # Win: payout is 1:1 so we add bet*2 (the original bet + profit).
-        db.add_winnings(user_id, bet)
-        outcome = f"You win! You gain {bet}."
+    if dealer_total > 21:
+        outcome = f"💦 Diiler bustis! Sa võitsid {game.bet} €!"
+        db.add_winnings(user_id, game.bet)
+    elif player_total > dealer_total:
+        outcome = f"🎉 Sa võitsid {game.bet} €!"
+        db.add_winnings(user_id, game.bet)
     elif player_total == dealer_total:
-        # Push: refund the bet.
-        db.refund_bet(user_id, bet)
-        outcome = "Push! Your bet has been returned."
+        outcome = "🤝 Viik! Sa said panuse tagasi."
+        db.refund_bet(user_id, game.bet)
     else:
-        outcome = f"You lose {bet}."
+        outcome = f"💸 Kaotasid {game.bet} €. Diiler võitis!"
 
-    final_message = (
-        f"Your final hand: {game['player_cards']} (total: {player_total}).\n"
-        f"Dealer's hand: {dealer_cards} (total: {dealer_total}).{dealer_actions}\n"
-        f"{outcome}"
+    balance, _ = db.get_user_balance(user_id)
+    content = (
+        f"🏁 **Mäng läbi!** 🃏\n"
+        f"Sinu kaardid: {game.player_hand} (kokku: {player_total})\n"
+        f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
+        f"{chr(10).join(dealer_actions)}\n\n"
+        f"{outcome}\n"
+        f"Su uus balanss: {balance} €"
     )
+    await message.channel.send(content)
     del active_blackjack_games[user_id]
-    await message.channel.send(final_message)
