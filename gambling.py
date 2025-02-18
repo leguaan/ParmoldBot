@@ -395,6 +395,7 @@ async def try_handle_hit(message):
     card = draw_card()
     game.player_hand.append(card)
     total = game.player_total
+    dealer_total = game.dealer_total
 
     if total > 21:
         balance, _ = db.get_user_balance(user_id)
@@ -410,6 +411,7 @@ async def try_handle_hit(message):
         content = (
             f"🃏 Sa võtsid kaardi {card}!\n"
             f"Sinu kaardid: {game.player_hand} (kokku: {total})\n"
+            f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
             "Kas võtad veel (`$hit`) või mitte (`$stand`)?"
         )
         msg = await message.channel.send(content)
@@ -448,7 +450,7 @@ async def try_handle_stand(message):
         f"🏁 **Mäng läbi!** 🃏\n"
         f"Sinu kaardid: {game.player_hand} (kokku: {player_total})\n"
         f"Diileri kaardid: {game.dealer_hand} (kokku: {dealer_total})\n"
-        f"{chr(10).join(dealer_actions)}\n\n"
+        f"{chr(10).join(dealer_actions)}\n"
         f"{outcome}\n"
         f"Su uus balanss: {balance} €"
     )
