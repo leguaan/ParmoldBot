@@ -85,13 +85,9 @@ class BlackjackView(discord.ui.View):
 class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        logging.info("BlackjackCog init")
-
-    async def cog_load(self):
-        logging.info("BlackjackCog load")
 
     @commands.command(name='blackjack')
-    async def blackjack(self, ctx, bet:int):
+    async def blackjack(self, ctx: commands.Context, bet:int):
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
         dealer_hand = [deck.pop()]
@@ -99,10 +95,10 @@ class BlackjackCog(commands.Cog):
             f"**Player's hand:** {' '.join(player_hand)} (Score: {hand_value(player_hand)})\n"
             f"**Dealer's hand:** {' '.join(dealer_hand)}"
         )
-        view = BlackjackView(ctx.interaction.user.id, deck, player_hand, dealer_hand)
+        view = BlackjackView(ctx.author.id, deck, player_hand, dealer_hand)
         await ctx.send(content=content, view=view)
     
-    @app_commands.command(name="ping")
+    @app_commands.command(name="ping", description="ping-pong")
     async def slash_pingcmd(self, interaction):
         await interaction.response.send_message(interaction.user.mention)
 
