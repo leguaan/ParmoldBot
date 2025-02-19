@@ -99,5 +99,5 @@ class BlackjackCog(commands.Cog):
         await ctx.send(content=content, view=view)
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(BlackjackCog(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(BlackjackCog(bot))
