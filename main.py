@@ -58,7 +58,7 @@ async def on_ready():
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(bot)
-
+    await bot.load_extension("blackjack")
 
     startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
     channel = bot.get_channel(startup_channel_id)
@@ -124,5 +124,4 @@ async def on_message(message):
     sys.stdout.flush()
 
 
-bot.load_extension("blackjack")
 bot.run(os.environ.get('TOKEN'))
