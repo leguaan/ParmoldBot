@@ -59,7 +59,7 @@ class BlackjackView(discord.ui.View):
         await interaction.response.edit_message(content=content, view=self)
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
-    async def hit(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def hit(self, interaction: discord.Interaction, button: discord.ui.Button,):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("This isn't your game!", ephemeral=True)
             return
@@ -72,7 +72,7 @@ class BlackjackView(discord.ui.View):
         await self.update_message(interaction)
 
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.red)
-    async def stand(self, button: discord.ui.Button, interaction: discord.Interaction):
+    async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("This isn't your game!", ephemeral=True)
             return
@@ -86,8 +86,8 @@ class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='blackjack')
-    async def blackjack(self, ctx: commands.Context, bet:int):
+    @app_commands.command(name="blackjack", description="ping-pong")
+    async def blackjack(self, interaction: discord.Interaction, bet:int):
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
         dealer_hand = [deck.pop()]
@@ -95,8 +95,8 @@ class BlackjackCog(commands.Cog):
             f"**Player's hand:** {' '.join(player_hand)} (Score: {hand_value(player_hand)})\n"
             f"**Dealer's hand:** {' '.join(dealer_hand)}"
         )
-        view = BlackjackView(ctx.author.id, deck, player_hand, dealer_hand)
-        await ctx.send(content=content, view=view)
+        view = BlackjackView(interaction.user.id, deck, player_hand, dealer_hand)
+        await interaction.response.send_message(content=content, view=view)
     
     @app_commands.command(name="ping", description="ping-pong")
     async def slash_pingcmd(self, interaction):
