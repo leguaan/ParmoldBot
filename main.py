@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 import os
 import sys
 import traceback
@@ -15,6 +16,7 @@ from instantmeme import try_handle_instant_meme
 from ace import try_handle_ace
 from impersonate import try_handle_impersonation
 from ai import try_handle_ai
+from blackjack import BlackjackCog
 
 seqlog.log_to_seq(
    server_url="http://seq:5341/",
@@ -27,7 +29,7 @@ seqlog.log_to_seq(
 intents = discord.Intents.default()
 intents.message_content = True
 start_time: datetime = None
-client = discord.Client(intents=intents)
+bot = commands.Bot(intents=intents)
 
 
 async def try_handle_help(message):
@@ -48,40 +50,42 @@ async def try_handle_uptime(message: discord.Message):
         )
 
 
-@client.event
+@bot.event
 async def on_ready():
     global start_time
     start_time = datetime.now()
 
-    logging.info(f'We have logged in as {client.user}')
+    logging.info(f'We have logged in as {bot.user}')
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
-    await client.change_presence(status=discord.Status.online, activity=activity)
-    await load_reminders(client)
+    await bot.change_presence(status=discord.Status.online, activity=activity)
+    await load_reminders(bot)
+    await bot.add_cog(BlackjackCog(bot))
+
 
     startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
-    channel = client.get_channel(startup_channel_id)
+    channel = bot.get_channel(startup_channel_id)
     if channel:
         await channel.send(f"🔄 PIRRRAAAKIII, ma olen tagasi {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     else:
         logging.error(f"Could not find channel with ID {startup_channel_id}")
 
 
-@client.event
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    if message.author == bot.user:
         return
     try:
         await try_handle_uptime(message)
 
         await try_handle_mhm(message)
 
-        await try_handle_remind_me(client, message)
+        await try_handle_remind_me(bot, message)
 
         await try_handle_bad_bot(message)
 
-        await try_handle_good_bot(client, message)
+        await try_handle_good_bot(bot, message)
 
-        await try_handle_reaction_bot(client, message)
+        await try_handle_reaction_bot(bot, message)
 
         await try_handle_risto_time(message)
 
@@ -93,7 +97,7 @@ async def on_message(message):
 
         await try_handle_ace(message)
 
-        await try_handle_impersonation(client, message)
+        await try_handle_impersonation(bot, message)
 
         await try_handle_greeting(message)
 
@@ -107,13 +111,13 @@ async def on_message(message):
 
         await try_handle_balance(message)
 
-        await try_handle_blackjack(message)
+        #await try_handle_blackjack(message)
 
-        await try_handle_hit(message)
+        #await try_handle_hit(message)
 
-        await try_handle_stand(message)
+        #await try_handle_stand(message)
 
-        await try_handle_ai(client, message)
+        await try_handle_ai(bot, message)
 
     except Exception:
         logging.exception(traceback.format_exc())
@@ -122,4 +126,4 @@ async def on_message(message):
     sys.stdout.flush()
 
 
-client.run(os.environ.get('TOKEN'))
+bot.run(os.environ.get('TOKEN'))
