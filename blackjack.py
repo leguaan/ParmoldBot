@@ -2,7 +2,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
-import logging
+from gambling import Database, DB_NAME
+db = Database(DB_NAME)
 
 def create_deck():
     suits = ['♠', '♥', '♦', '♣']
@@ -28,32 +29,37 @@ def hand_value(hand):
     return total
 
 class BlackjackView(discord.ui.View):
-    def __init__(self, author_id, deck, player_hand, dealer_hand):
+    def __init__(self, author_id, deck, player_hand, dealer_hand, bet:int):
         super().__init__(timeout=60)
         self.author_id = author_id
         self.deck = deck
         self.player_hand = player_hand
         self.dealer_hand = dealer_hand
         self.game_over = False
+        self.bet = bet
 
     async def update_message(self, interaction: discord.Interaction):
+        p_score = hand_value(self.player_hand)
+        d_score = hand_value(self.dealer_hand)
+
         content = (
-            f"**Player's hand:** {' '.join(self.player_hand)} (Score: {hand_value(self.player_hand)})\n"
-            f"**Dealer's hand:** {' '.join(self.dealer_hand)}"
+            f"**Sinu kaardid:** {' '.join(self.player_hand)} (kokku: {p_score})\n"
+            f"**Diileri kaardid:** {' '.join(self.dealer_hand)} (kokku: {d_score})"
         )
         if self.game_over:
-            p_score = hand_value(self.player_hand)
-            d_score = hand_value(self.dealer_hand)
             if p_score > 21:
-                content += "\nYou busted! Dealer wins."
+                content += f"\n🎉 Sa võitsid {self.bet} eurot!"
+                db.add_winnings(self.author_id, self.bet)
             elif d_score > 21:
-                content += "\nDealer busted! You win!"
+                content += f"\n💦 Diiler bustis! Sa võitsid {self.bet} eurot!"
             elif d_score < p_score:
-                content += "\nYou win!"
+                content += f"\n🎉 Sa võitsid {self.bet} eurot!"
             elif d_score > p_score:
-                content += "\nDealer wins!"
+                content += f"\n💸 Kaotasid {self.bet} eurot. Diiler võitis!"
             else:
-                content += "\nPush!"
+                content += "\n🤝 Viik! Sa said panuse tagasi."
+                db.refund_bet(self.author_id, self.bet)
+            
             for child in self.children:
                 child.disabled = True
         await interaction.response.edit_message(content=content, view=self)
@@ -61,7 +67,7 @@ class BlackjackView(discord.ui.View):
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button,):
         if interaction.user.id != self.author_id:
-            await interaction.response.send_message("This isn't your game!", ephemeral=True)
+            await interaction.response.send_message("Otsi omale oma laud! See laud on täis.", ephemeral=True)
             return
         # Deal another card
         if self.deck:
@@ -74,7 +80,7 @@ class BlackjackView(discord.ui.View):
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.red)
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author_id:
-            await interaction.response.send_message("This isn't your game!", ephemeral=True)
+            await interaction.response.send_message("Nii väikese raha kogusega siia lauda ei saa!", ephemeral=True)
             return
         # Dealer draws until reaching 17 or more
         while hand_value(self.dealer_hand) < 17 and self.deck:
@@ -86,23 +92,29 @@ class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="blackjack", description="ping-pong")
+    @app_commands.command(name="blackjack")
     async def blackjack(self, interaction: discord.Interaction, bet:int):
+        if bet < 1:
+            await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
+            return
+        
+        balance, = db.get_user_balance(interaction.user.id)
+        if bet > balance:
+            await interaction.response.send_message(content=f"Jää oma võimekuse piiridesse! (max panus sulle: {balance})")
+            return
+
+        db.place_bet(interaction.user.id, bet)
+
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
         dealer_hand = [deck.pop()]
         content = (
-            f"**Player's hand:** {' '.join(player_hand)} (Score: {hand_value(player_hand)})\n"
-            f"**Dealer's hand:** {' '.join(dealer_hand)}"
+            f"**Sinu kaardid:** {' '.join(player_hand)} (kokku: {hand_value(player_hand)})\n"
+            f"**Diileri kaardid:** {' '.join(dealer_hand)}"
         )
-        view = BlackjackView(interaction.user.id, deck, player_hand, dealer_hand)
+        view = BlackjackView(interaction.user.id, deck, player_hand, dealer_hand, bet)
         await interaction.response.send_message(content=content, view=view)
-    
-    @app_commands.command(name="ping", description="ping-pong")
-    async def slash_pingcmd(self, interaction):
-        await interaction.response.send_message(interaction.user.mention)
 
 
 async def setup(bot: commands.Bot):
-    logging.info("setup called")
     await bot.add_cog(BlackjackCog(bot))
