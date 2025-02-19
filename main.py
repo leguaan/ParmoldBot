@@ -16,7 +16,6 @@ from instantmeme import try_handle_instant_meme
 from ace import try_handle_ace
 from impersonate import try_handle_impersonation
 from ai import try_handle_ai
-from blackjack import BlackjackCog
 
 seqlog.log_to_seq(
    server_url="http://seq:5341/",
@@ -59,7 +58,7 @@ async def on_ready():
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(bot)
-    await bot.add_cog(BlackjackCog(bot))
+    await bot.tree.sync()
 
 
     startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
@@ -126,4 +125,5 @@ async def on_message(message):
     sys.stdout.flush()
 
 
+bot.load_extension("blackjack")
 bot.run(os.environ.get('TOKEN'))

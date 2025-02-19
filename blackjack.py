@@ -95,3 +95,7 @@ class BlackjackCog(commands.Cog):
         )
         view = BlackjackView(ctx.interaction.user.id, deck, player_hand, dealer_hand)
         await ctx.send(content=content, view=view)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(BlackjackCog(bot))
