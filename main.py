@@ -29,7 +29,7 @@ seqlog.log_to_seq(
 intents = discord.Intents.default()
 intents.message_content = True
 start_time: datetime = None
-bot = commands.Bot(intents=intents)
+bot = commands.Bot(intents=intents, command_prefix="$")
 
 
 async def try_handle_help(message):
