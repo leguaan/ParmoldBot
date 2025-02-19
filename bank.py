@@ -7,8 +7,12 @@ db = Database(DB_NAME)
 class BankCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.ctx_menu = app_commands.ContextMenu(
+            name='Balance',
+            callback=self.get_balance
+        )
+        self.bot.tree.add_command(self.ctx_menu)
 
-    @app_commands.context_menu(name="Balance")
     async def get_balance(self, interaction: discord.Interaction, member: discord.Member):
         balance, _ = db.get_user_balance(member.id)
         await interaction.response.send_message(content=f'{member} omab {balance} eurot.')
