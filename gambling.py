@@ -163,7 +163,7 @@ async def try_handle_flex(message: Message):
 
     chance = random.random()
     if chance < 0.2:
-        if chance < 0.1:
+        if random.random() < 0.1:
             db.place_bet(user_id, balance)
             await message.channel.send(random.choice(BIG_FAILURE_MESSAGES))
         else:
@@ -220,14 +220,14 @@ async def try_handle_beg(message: Message):
     user_id = message.author.id
     chance = random.random()
     if chance < 0.5:
-        if chance < 0.1:
+        if random.random() < 0.25:
             balance, _ = db.get_user_balance(user_id)
             if balance > 0:
                 db.place_bet(user_id, balance)
                 await message.channel.send("Kerjasid mustlaselt ja ta lasi kogu su raha rotti!")
             else:
                 db.add_winnings(user_id, 100)
-            await message.channel.send("Said Petsilt korraliku nutsu, lase edasi tšempion!")
+                await message.channel.send("Said Petsilt korraliku nutsu, lase edasi tšempion!")
         else:
             db.add_winnings(user_id, 5)
             await message.channel.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
