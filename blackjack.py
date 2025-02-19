@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import random
 import logging
@@ -86,8 +87,7 @@ class BlackjackCog(commands.Cog):
         self.bot = bot
         logging.info("BlackjackCog init")
 
-    @commands.Cog.listener()
-    async def cog_load():
+    async def cog_load(self):
         logging.info("BlackjackCog load")
 
     @commands.command(name='blackjack')
@@ -101,6 +101,10 @@ class BlackjackCog(commands.Cog):
         )
         view = BlackjackView(ctx.interaction.user.id, deck, player_hand, dealer_hand)
         await ctx.send(content=content, view=view)
+    
+    @app_commands.command(name="ping")
+    async def slash_pingcmd(self, interaction):
+        await interaction.response.send_message(interaction.user.mention)
 
 
 async def setup(bot: commands.Bot):

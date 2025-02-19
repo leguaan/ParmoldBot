@@ -59,6 +59,7 @@ async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(bot)
     await bot.load_extension("blackjack")
+    await bot.tree.sync()
 
     startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
     channel = bot.get_channel(startup_channel_id)
