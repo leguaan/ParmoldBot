@@ -52,8 +52,10 @@ class BlackjackView(discord.ui.View):
                 db.add_winnings(self.author_id, self.bet)
             elif d_score > 21:
                 content += f"\n💦 Diiler bustis! Sa võitsid {self.bet} eurot!"
+                db.add_winnings(self.author_id, self.bet)
             elif d_score < p_score:
                 content += f"\n🎉 Sa võitsid {self.bet} eurot!"
+                db.add_winnings(self.author_id, self.bet)
             elif d_score > p_score:
                 content += f"\n💸 Kaotasid {self.bet} eurot. Diiler võitis!"
             else:
@@ -62,6 +64,7 @@ class BlackjackView(discord.ui.View):
             
             for child in self.children:
                 child.disabled = True
+
         await interaction.response.edit_message(content=content, view=self)
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
@@ -88,6 +91,10 @@ class BlackjackView(discord.ui.View):
         self.game_over = True
         await self.update_message(interaction)
 
+    async def on_timeout(self):
+        self.clear_items()
+        await self.message.edit(content="Mäng lõppenud")
+
 class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -113,7 +120,7 @@ class BlackjackCog(commands.Cog):
             f"**Diileri kaardid:** {' '.join(dealer_hand)}"
         )
         view = BlackjackView(interaction.user.id, deck, player_hand, dealer_hand, bet)
-        await interaction.response.send_message(content=content, view=view)
+        view.message = await interaction.response.send_message(content=content, view=view)
 
 
 async def setup(bot: commands.Bot):
