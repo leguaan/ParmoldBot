@@ -86,8 +86,12 @@ class BlackjackCog(commands.Cog):
         self.bot = bot
         logging.info("BlackjackCog init")
 
+    @commands.Cog.listener()
+    async def cog_load():
+        logging.info("BlackjackCog load")
+
     @commands.command(name='blackjack')
-    async def blackjack(self, ctx: commands.Context, bet:int):
+    async def blackjack(self, ctx, bet:int):
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
         dealer_hand = [deck.pop()]
@@ -100,4 +104,5 @@ class BlackjackCog(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    logging.info("setup called")
     await bot.add_cog(BlackjackCog(bot))
