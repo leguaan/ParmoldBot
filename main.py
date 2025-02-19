@@ -58,7 +58,7 @@ async def on_ready():
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(bot)
-    await bot.tree.sync()
+    await bot.tree.sync(868526585744080897)
 
 
     startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))

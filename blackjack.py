@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import random
+import logging
 
 def create_deck():
     suits = ['♠', '♥', '♦', '♣']
@@ -83,8 +84,9 @@ class BlackjackView(discord.ui.View):
 class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        logging.info("BlackjackCog init")
 
-    @commands.hybrid_command()
+    @commands.command(name='blackjack')
     async def blackjack(self, ctx: commands.Context, bet:int):
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
