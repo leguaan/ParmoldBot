@@ -68,6 +68,9 @@ async def on_ready():
     else:
         logging.error(f"Could not find channel with ID {startup_channel_id}")
 
+@commands.command()
+async def test(ctx:commands.Context):
+    await ctx.send("test")
 
 @bot.event
 async def on_message(message):
