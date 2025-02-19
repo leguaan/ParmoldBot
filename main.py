@@ -58,6 +58,7 @@ async def on_ready():
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(bot)
+    await bot.load_extension("bank")
     await bot.load_extension("blackjack")
     bot.tree.copy_global_to(guild=discord.Object(id=868526585744080897))
     await bot.tree.sync(guild=discord.Object(id=868526585744080897))
