@@ -72,7 +72,7 @@ async def on_ready():
 async def test(ctx:commands.Context):
     await ctx.send("test")
 
-@bot.event
+@bot.listen()
 async def on_message(message):
     if message.author == bot.user:
         return
