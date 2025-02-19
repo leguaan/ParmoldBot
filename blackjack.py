@@ -98,7 +98,7 @@ class BlackjackCog(commands.Cog):
             await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
             return
         
-        balance, = db.get_user_balance(interaction.user.id)
+        balance, _ = db.get_user_balance(interaction.user.id)
         if bet > balance:
             await interaction.response.send_message(content=f"Jää oma võimekuse piiridesse! (max panus sulle: {balance})")
             return
