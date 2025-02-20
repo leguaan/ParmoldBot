@@ -18,7 +18,8 @@ from ace import try_handle_ace
 from impersonate import try_handle_impersonation
 from ai import try_handle_ai
 
-seqlog.log_to_seq(
+logging.basicConfig(level=logging.DEBUG)
+handler = seqlog.log_to_seq(
    server_url="http://seq:5341/",
    api_key="5gFywFBgqKr5OzJhvydH",
    level=logging.DEBUG,
@@ -31,7 +32,7 @@ intents.message_content = True
 start_time: datetime = None
 bot = commands.Bot(intents=intents, command_prefix="$")
 
-WORD_LIST_FILE = "data/estonian_words.txt.gz"
+WORD_LIST_FILE = "Data/estonian_words.txt.gz"
 startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
 last_sent_date = None
 cached_channel = None
@@ -155,4 +156,4 @@ async def on_message(message):
     sys.stdout.flush()
 
 
-bot.run(os.environ.get('TOKEN'))
+bot.run(os.environ.get('TOKEN'), log_handler=handler)
