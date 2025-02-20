@@ -74,7 +74,7 @@ class BlackjackView(discord.ui.View):
 
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.green)
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button,):
-        if interaction.user.id != self.author_id:
+        if interaction.user.id != self.player.id:
             await interaction.response.send_message("Otsi omale oma laud! See laud on täis.", ephemeral=True)
             return
         # Deal another card
@@ -87,7 +87,7 @@ class BlackjackView(discord.ui.View):
 
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.red)
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.author_id:
+        if interaction.user.id != self.player.id:
             await interaction.response.send_message("Nii väikese raha kogusega siia lauda ei saa!", ephemeral=True)
             return
         # Dealer draws until reaching 17 or more
