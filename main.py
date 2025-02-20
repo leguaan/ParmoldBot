@@ -105,11 +105,11 @@ async def on_message(message):
 
         await try_handle_greeting(message)
 
-        await try_handle_flex(message)
+        #await try_handle_flex(message)
 
         await try_handle_beg(message)
 
-        await try_handle_daily(message)
+        #await try_handle_daily(message)
 
         #await try_handle_bet(message)
 

@@ -28,9 +28,9 @@ def hand_value(hand):
     return total
 
 class BlackjackView(discord.ui.View):
-    def __init__(self, author_id, bank, bot, deck, player_hand, dealer_hand, bet:int):
+    def __init__(self, player, bank, bot, deck, player_hand, dealer_hand, bet:int):
         super().__init__(timeout=60)
-        self.author_id = author_id
+        self.player = player
         self.bank: BankCog = bank
         self.bot = bot
         self.deck = deck
@@ -50,21 +50,21 @@ class BlackjackView(discord.ui.View):
         if self.game_over:
             if p_score > 21:
                 content += f"\n💦 Bust! 💸 Kaotasid {self.bet} eurot!"
-                self.bank.deposit(self.bot.user.id, self.bet*2)
+                self.bank.deposit(self.bot.user, self.bet*2)
             elif d_score > 21:
                 content += f"\n💦 Diiler bustis! Sa võitsid {self.bet} eurot!"
-                self.bank.deposit(self.author_id, self.bet*2)
+                self.bank.deposit(self.player, self.bet*2)
             elif d_score < p_score:
                 content += f"\n🎉 Sa võitsid {self.bet} eurot!"
-                self.bank.deposit(self.author_id, self.bet*2)
+                self.bank.deposit(self.player, self.bet*2)
             elif d_score > p_score:
                 self.bank.deposit(self.bot.user.id, self.bet*2)
                 content += f"\n💸 Kaotasid {self.bet} eurot. Diiler võitis!"
-                self.bank.deposit(self.bot.user.id, self.bet*2)
+                self.bank.deposit(self.bot.user, self.bet*2)
             else:
                 content += "\n🤝 Viik! Sa said panuse tagasi."
-                self.bank.deposit(self.author_id, self.bet)
-                self.bank.deposit(self.bot.user.id, self.bet)
+                self.bank.deposit(self.player, self.bet)
+                self.bank.deposit(self.bot.user, self.bet)
             
             for child in self.children:
                 child.disabled = True
@@ -110,13 +110,13 @@ class BlackjackCog(commands.Cog):
             await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
             return
         
-        balance = self.bank.get_balance(interaction.user.id)
+        balance = self.bank.get_balance(interaction.user)
         if bet > balance:
             await interaction.response.send_message(content=f"Jää oma võimekuse piiridesse! (max panus sulle: {balance})")
             return
 
-        self.bank.withdraw(interaction.user.id, bet)
-        self.bank.withdraw_limitless(self.bot.user.id, bet)
+        self.bank.withdraw(interaction.user, bet)
+        self.bank.withdraw_limitless(self.bot.user, bet)
 
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
@@ -125,7 +125,7 @@ class BlackjackCog(commands.Cog):
             f"**Sinu kaardid:** {' '.join(player_hand)} (kokku: {hand_value(player_hand)})\n"
             f"**Diileri kaardid:** {' '.join(dealer_hand)}"
         )
-        view = BlackjackView(interaction.user.id, self.bank, self.bot, deck, player_hand, dealer_hand, bet)
+        view = BlackjackView(interaction.user, self.bank, self.bot, deck, player_hand, dealer_hand, bet)
         view.message = await interaction.response.send_message(content=content, view=view)
 
 
