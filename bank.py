@@ -17,6 +17,7 @@ FAILURE_MESSAGES = [
 BIG_FAILURE_MESSAGES = [
     "Flexisid rottide seas ja jäid kogu rahast ilma!",
     "Maksuamet külmutas su konto maksupettuste tõttu!",
+    "Petsi nuts oli kahtlase päritoluga ja KAPO võttis raha enda kätte!",
     "Keskerakonnal oli vaja trahvi maksta ja see oli oodatust suurem.",
     "Yoink!"
 ]
@@ -38,7 +39,7 @@ FLEX_IMAGES = [
 ]
 
 class BankCog(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db_name = 'data/gambling.db'
         self.conn = None
@@ -128,16 +129,28 @@ class BankCog(commands.Cog):
         except sqlite3.Error as e:
             logging.error(f"Error getting user {user.id}: {e}")
             return 0
+        
+    def get_balances(self)->list[tuple[int,int]]:
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id,balance FROM users ORDER BY balance DESC")
+            result = cursor.fetchall()
+
+            return result
+        except sqlite3.Error as e:
+            logging.error(f"Error : {e}")
+            return []
     
-    def update_daily(self, user: discord.User | discord.Member, amount: int, now: datetime) -> tuple[bool, datetime]:
+    def update_daily(self, user: discord.User | discord.Member, amount: int) -> bool:
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT last_daily FROM users WHERE user_id = ?", (user.id,))
             last_daily = datetime.fromisoformat(cursor.fetchone()[0])
-            diff = now.date() - last_daily.date()
-            if diff < 1:
-                return (False, last_daily)
+            diff = datetime.now.date() - last_daily.date()
+            if diff < timedelta(days=1):
+                return False
             
             cursor = conn.cursor()
             cursor.execute('''
@@ -145,12 +158,12 @@ class BankCog(commands.Cog):
                 SET balance = balance + ?, 
                     last_daily = ? 
                 WHERE user_id = ?
-            ''', (amount, now.isoformat(), user.id))
+            ''', (amount, datetime.now.isoformat(), user.id))
             conn.commit()
-            return (True, now)
+            return True
         except sqlite3.Error as e:
             logging.error(f"Daily update failed for {user.id}: {e}")
-            return (False, None)
+            return False
     
     async def _get_balance_ctxmenu(self, interaction: discord.Interaction, member: discord.Member):
         balance = self.get_balance(member)
@@ -170,14 +183,14 @@ class BankCog(commands.Cog):
             await interaction.response.send_message(content="Kus su raha on!? 💸")
             return
 
-        if not self.bank.withdraw(interaction.user, 250):
+        if not self.withdraw(interaction.user, 250):
             await interaction.response.send_message(content="❌ Tekkis viga raha mahaarvamisel.")
             return
 
         chance = random.random()
         if chance < 0.2:
             if random.random() < 0.1:
-                self.bank.withdraw(interaction.user, balance-250)
+                self.withdraw(interaction.user, balance-250)
                 await interaction.response.send_message(content=random.choice(BIG_FAILURE_MESSAGES))
             else:
                 await interaction.response.send_message(content=random.choice(FAILURE_MESSAGES))
@@ -191,10 +204,9 @@ class BankCog(commands.Cog):
     
     @app_commands.command(name="daily")
     async def _daily_cmd(self, interaction: discord.Interaction):
-        now = datetime.now()
         DAILY_BONUS = 1000
 
-        success, last_daily = self.update_daily(interaction.user, DAILY_BONUS, now)
+        success = self.update_daily(interaction.user, DAILY_BONUS)
         
         if success:
             balance = self.get_balance(interaction.user)
@@ -223,6 +235,12 @@ class BankCog(commands.Cog):
             else:
                 self.deposit(ctx.author, 10)
                 await ctx.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
+    
+    @app_commands.command(name="leaderboard")
+    async def _leaderboard_scmd(self, interaction: discord.Interaction):
+        balances = self.get_balances()
+        content = "\n".join([f"{i}. {balances[i][1]} {interaction.guild.get_member(balances[i][0]).display_name}" for i in range(len(balances))])
+        await interaction.response.send_message(content=content)
     
 
 async def setup(bot: commands.Bot):
