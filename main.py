@@ -58,11 +58,14 @@ async def on_ready():
     activity = discord.Activity(type=discord.ActivityType.listening, name="AI-Podcast: Poopoo Peepee")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     await load_reminders(bot)
-    await bot.load_extension("bank")
-    await bot.load_extension("blackjack")
-    await bot.load_extension("roulette")
-    bot.tree.copy_global_to(guild=discord.Object(id=868526585744080897))
-    await bot.tree.sync(guild=discord.Object(id=868526585744080897))
+    try:
+        await bot.load_extension("bank")
+        await bot.load_extension("blackjack")
+        await bot.load_extension("roulette")
+        bot.tree.copy_global_to(guild=discord.Object(id=868526585744080897))
+        await bot.tree.sync(guild=discord.Object(id=868526585744080897))
+    except Exception as e:
+        logging.error(f"Error loading extensions: {e}")
 
     startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
     channel = bot.get_channel(startup_channel_id)
