@@ -77,10 +77,10 @@ async def on_ready():
         await bot.load_extension("bank")
         await bot.load_extension("blackjack")
         await bot.load_extension("roulette")
-        await bot.tree.clear_commands(guild=discord.Object(id=868526585744080897))
-        await bot.tree.clear_commands()
-        await bot.tree.sync(guild=discord.Object(id=868526585744080897))
-        await bot.tree.sync()
+        bot.tree.clear_commands(guild=discord.Object(id=868526585744080897))
+        logging.info(f"guild cmd: {await bot.tree.sync(guild=discord.Object(id=868526585744080897))}")
+        bot.tree.clear_commands()
+        logging.info(f"guild cmd: {await bot.tree.sync())}")
     except Exception as e:
         logging.error(f"Error loading extensions: {e}")
 
