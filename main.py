@@ -18,11 +18,11 @@ from ace import try_handle_ace
 from impersonate import try_handle_impersonation
 from ai import try_handle_ai
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 handler = seqlog.log_to_seq(
    server_url="http://seq:5341/",
    api_key="5gFywFBgqKr5OzJhvydH",
-   level=logging.DEBUG,
+   level=logging.INFO,
    batch_size=10,
    auto_flush_timeout=10,
    override_root_logger=True)

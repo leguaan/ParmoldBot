@@ -145,10 +145,11 @@ class BankCog(commands.Cog):
     def update_daily(self, user: discord.User | discord.Member, amount: int) -> bool:
         conn = self._get_connection()
         try:
+            now = datetime.now()
             cursor = conn.cursor()
             cursor.execute("SELECT last_daily FROM users WHERE user_id = ?", (user.id,))
             last_daily = datetime.fromisoformat(cursor.fetchone()[0])
-            diff = datetime.now.date() - last_daily.date()
+            diff = now.date() - last_daily.date()
             if diff < timedelta(days=1):
                 return False
             
@@ -158,7 +159,7 @@ class BankCog(commands.Cog):
                 SET balance = balance + ?, 
                     last_daily = ? 
                 WHERE user_id = ?
-            ''', (amount, datetime.now.isoformat(), user.id))
+            ''', (amount, now.isoformat(), user.id))
             conn.commit()
             return True
         except sqlite3.Error as e:
