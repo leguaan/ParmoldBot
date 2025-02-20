@@ -107,7 +107,7 @@ async def on_message(message):
 
         #await try_handle_flex(message)
 
-        await try_handle_beg(message)
+        #await try_handle_beg(message)
 
         #await try_handle_daily(message)
 

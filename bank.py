@@ -205,6 +205,22 @@ class BankCog(commands.Cog):
         hours, remainder = divmod(remaining.seconds, 3600)
         minutes, _ = divmod(remainder, 60)
         await interaction.response.send_message(f"Juba said oma raha. Proovi uuesti {hours}h {minutes}m pärast!")
+        
+    @commands.hybrid_command(name="beg")
+    async def _beg_dmc(self, ctx: commands.Context):
+        chance = random.random()
+        if chance < 0.5:
+            if random.random() < 0.25:
+                balance = self.get_balance(ctx.author)
+                if balance > 0:
+                    self.withdraw(ctx.author, balance)
+                    await ctx.send("Kerjasid mustlaselt ja ta lasi kogu su raha rotti!")
+                else:
+                    self.deposit(ctx.author, 200)
+                    await ctx.send("Said Petsilt korraliku nutsu, lase edasi tšempion!")
+            else:
+                self.deposit(ctx.author, 10)
+                await ctx.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
     
 
 async def setup(bot: commands.Bot):
