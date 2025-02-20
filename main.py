@@ -32,7 +32,7 @@ intents.message_content = True
 start_time: datetime = None
 bot = commands.Bot(intents=intents, command_prefix="$")
 
-WORD_LIST_FILE = "Data/estonian_words.txt.gz"
+WORD_LIST_FILE = "data/estonian-words.txt.gz"
 startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
 last_sent_date = None
 cached_channel = None
