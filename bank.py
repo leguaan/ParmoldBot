@@ -135,8 +135,8 @@ class BankCog(commands.Cog):
             cursor = conn.cursor()
             cursor.execute("SELECT last_daily FROM users WHERE user_id = ?", (user.id,))
             last_daily = datetime.fromisoformat(cursor.fetchone()[0])
-            diff = now - last_daily
-            if diff < timedelta(days=1):
+            diff = now.date() - last_daily.date()
+            if diff < 1:
                 return (False, last_daily)
             
             cursor = conn.cursor()
@@ -201,10 +201,7 @@ class BankCog(commands.Cog):
             await interaction.response.send_message(content=f"Said oma {DAILY_BONUS} eurot! Su uus balanss on {balance} eurot.")
             return
 
-        remaining = timedelta(days=1) - (now - last_daily)
-        hours, remainder = divmod(remaining.seconds, 3600)
-        minutes, _ = divmod(remainder, 60)
-        await interaction.response.send_message(f"Juba said oma raha. Proovi uuesti {hours}h {minutes}m pärast!")
+        await interaction.response.send_message("Juba said oma raha. Proovi homme uuesti!")
 
     @app_commands.command(name="beg")
     async def _beg_scmd(self, interaction: discord.Interaction):
