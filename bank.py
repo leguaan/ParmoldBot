@@ -207,12 +207,12 @@ class BankCog(commands.Cog):
         await interaction.response.send_message(f"Juba said oma raha. Proovi uuesti {hours}h {minutes}m pärast!")
 
     @app_commands.command(name="beg")
-    async def _beg_dmc(self, interaction: discord.Interaction):
+    async def _beg_scmd(self, interaction: discord.Interaction):
         self.deposit(interaction.user, 5)
         await interaction.response.send_message(content="Su YT ad revenue tõi sulle 5€ sisse!")
  
     @commands.command(name="beg")
-    async def _beg_dmc(self, ctx: commands.Context):
+    async def _beg_rcmd(self, ctx: commands.Context):
         chance = random.random()
         if chance < 0.5:
             if random.random() < 0.25:
