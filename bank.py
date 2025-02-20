@@ -237,10 +237,18 @@ class BankCog(commands.Cog):
                 self.deposit(ctx.author, 10)
                 await ctx.send("Okei kerjus... saad oma 10 eurot, mine osta Bocki!")
     
+    async def _get_user_name_by_id(self, guild: discord.Guild, id: int):
+        member = guild.get_member(id)
+        if member is None:
+            member = await guild.fetch_member(id)
+        if member is None:
+            return f"Unknown({id})"
+        return member.display_name
+
     @app_commands.command(name="leaderboard")
     async def _leaderboard_scmd(self, interaction: discord.Interaction):
         balances = self.get_balances()
-        content = "\n".join([f"{i}. {balances[i][1]} {interaction.guild.get_member(balances[i][0]).display_name}" for i in range(len(balances))])
+        content = "\n".join([f"{i}. {balances[i][1]} {await self._get_user_name_by_id(interaction.guild,balances[i][0])}" for i in range(len(balances))])
         await interaction.response.send_message(content=content)
     
 

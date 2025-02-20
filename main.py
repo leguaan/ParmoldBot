@@ -77,7 +77,9 @@ async def on_ready():
         await bot.load_extension("bank")
         await bot.load_extension("blackjack")
         await bot.load_extension("roulette")
-        await bot.tree.sync()
+        await bot.tree.clear_commands(guild=discord.Object(id=868526585744080897))
+        await bot.tree.clear_commands(guild=None)
+        await bot.tree.sync(guild=discord.Object(id=868526585744080897))
     except Exception as e:
         logging.error(f"Error loading extensions: {e}")
 
