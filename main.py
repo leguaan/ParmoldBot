@@ -1,11 +1,13 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import os
 import sys
 import traceback
 import seqlog
 import logging
-from datetime import datetime
+import gzip
+import random
+from datetime import datetime, date
 
 from reminder import try_handle_remind_me, load_reminders
 from gym import try_handle_mhm
@@ -30,6 +32,19 @@ intents.message_content = True
 start_time: datetime = None
 bot = commands.Bot(intents=intents, command_prefix="$")
 
+WORD_LIST_FILE = "data/estonian_words.txt.gz"
+startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
+last_sent_date = None
+cached_channel = None
+
+try:
+    with gzip.open(WORD_LIST_FILE, "rt", encoding="utf-8") as f:
+        word_list = [line.strip() for line in f if line.strip()]
+    logging.info(f"Loaded {len(word_list)} words from {WORD_LIST_FILE}")
+except Exception as e:
+    logging.error(f"Error loading word list from {WORD_LIST_FILE}: {e}")
+    word_list = ["putsis"]
+
 
 async def try_handle_help(message):
     if message.content.startswith('$help'):
@@ -51,7 +66,7 @@ async def try_handle_uptime(message: discord.Message):
 
 @bot.event
 async def on_ready():
-    global start_time
+    global start_time, cached_channel
     start_time = datetime.now()
 
     logging.info(f'We have logged in as {bot.user}')
@@ -67,12 +82,28 @@ async def on_ready():
     except Exception as e:
         logging.error(f"Error loading extensions: {e}")
 
-    startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
-    channel = bot.get_channel(startup_channel_id)
-    if channel:
-        await channel.send(f"🔄 PIRRRAAAKIII, ma olen tagasi {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    cached_channel = bot.get_channel(startup_channel_id)
+    if cached_channel:
+        word_of_the_day_task.start()
+        await cached_channel.send(f"🔄 PIRRRAAAKIII, ma olen tagasi {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     else:
         logging.error(f"Could not find channel with ID {startup_channel_id}")
+
+
+@tasks.loop(minutes=5.0)
+async def word_of_the_day_task():
+    global last_sent_date, cached_channel
+    if last_sent_date == date.today():
+        return
+
+    now = datetime.now()
+    total_minutes = now.hour * 60 + now.minute
+    # Target time is 8:00 AM (480 minutes). Allow a window of ±10 minutes (470 to 490 minutes).
+    if 470 <= total_minutes <= 490:
+        word = random.choice(word_list)
+        await cached_channel.send(f"Tänase päeva sõna on **{word}**")
+        last_sent_date = date.today()
+
 
 @bot.listen()
 async def on_message(message):
