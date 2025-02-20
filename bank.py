@@ -207,9 +207,9 @@ class BankCog(commands.Cog):
         await interaction.response.send_message(f"Juba said oma raha. Proovi uuesti {hours}h {minutes}m pärast!")
 
     @app_commands.command(name="beg")
-    async def _beg_dmc(self, ctx: commands.Context):
-        self.deposit(ctx.author, 10)
-        await ctx.send("Su YT ad revenue tõi sulle 10€ sisse!")
+    async def _beg_dmc(self, interaction: discord.Interaction):
+        self.deposit(interaction.user, 5)
+        await interaction.response.send_message(content="Su YT ad revenue tõi sulle 5€ sisse!")
  
     @commands.command(name="beg")
     async def _beg_dmc(self, ctx: commands.Context):
