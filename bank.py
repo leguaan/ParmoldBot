@@ -147,10 +147,10 @@ class BankCog(commands.Cog):
                 WHERE user_id = ?
             ''', (amount, now.isoformat(), user.id))
             conn.commit()
-            return cursor.rowcount > 0
+            return (True, now)
         except sqlite3.Error as e:
             logging.error(f"Daily update failed for {user.id}: {e}")
-            return False
+            return (False, None)
     
     async def _get_balance_ctxmenu(self, interaction: discord.Interaction, member: discord.Member):
         balance = self.get_balance(member)
