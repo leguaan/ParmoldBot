@@ -105,7 +105,7 @@ class BlackjackCog(commands.Cog):
 
     @app_commands.command(name="blackjack")
     async def blackjack(self, interaction: discord.Interaction, bet:int):
-        bank: BankCog = self.bot.get_cog('Bank')
+        bank: BankCog = self.bot.get_cog('BankCog')
         
         if bet < 1:
             await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
