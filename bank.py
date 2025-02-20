@@ -117,7 +117,7 @@ class BankCog(commands.Cog):
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user.id,))
-            result = cursor.fetchone()
+            result = cursor.fetchone()[0]
 
             if not result:
                 cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user.id,))
