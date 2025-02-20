@@ -13,7 +13,7 @@ class RouletteCog(commands.Cog):
     
     @app_commands.command(name="bet")
     async def bet(self, interaction: discord.Interaction, amount:int, color: Literal['red','black','green']):
-        bank = self.bot.get_cog('bank')
+        bank: BankCog = self.bot.get_cog('Bank')
         
         if amount < 1:
             await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
