@@ -190,11 +190,8 @@ async def try_handle_daily(message: Message):
     except ValueError:
         last_daily = None
 
-    if last_daily and (now - last_daily) < timedelta(days=1):
-        remaining = timedelta(days=1) - (now - last_daily)
-        hours, remainder = divmod(remaining.seconds, 3600)
-        minutes, _ = divmod(remainder, 60)
-        await message.channel.send(f"Juba said oma raha. Proovi uuesti {hours}h {minutes}m pärast!")
+    if last_daily and now.date() <= last_daily.date():
+        await message.channel.send(f"Juba said oma raha. Proovi uuesti homme!")
         return
 
     if db.update_daily(user_id, DAILY_BONUS, now.isoformat()):
