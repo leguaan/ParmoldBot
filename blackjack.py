@@ -2,8 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
-from gambling import Database, DB_NAME
-db = Database(DB_NAME)
+from bank import BankCog
 
 def create_deck():
     suits = ['♠', '♥', '♦', '♣']
@@ -29,9 +28,11 @@ def hand_value(hand):
     return total
 
 class BlackjackView(discord.ui.View):
-    def __init__(self, author_id, deck, player_hand, dealer_hand, bet:int):
+    def __init__(self, author_id, bank, bot, deck, player_hand, dealer_hand, bet:int):
         super().__init__(timeout=60)
         self.author_id = author_id
+        self.bank: BankCog = bank
+        self.bot = bot
         self.deck = deck
         self.player_hand = player_hand
         self.dealer_hand = dealer_hand
@@ -49,17 +50,21 @@ class BlackjackView(discord.ui.View):
         if self.game_over:
             if p_score > 21:
                 content += f"\n💦 Bust! 💸 Kaotasid {self.bet} eurot!"
+                self.bank.deposit(self.bot.user.id, self.bet*2)
             elif d_score > 21:
                 content += f"\n💦 Diiler bustis! Sa võitsid {self.bet} eurot!"
-                db.add_winnings(self.author_id, self.bet)
+                self.bank.deposit(self.author_id, self.bet*2)
             elif d_score < p_score:
                 content += f"\n🎉 Sa võitsid {self.bet} eurot!"
-                db.add_winnings(self.author_id, self.bet)
+                self.bank.deposit(self.author_id, self.bet*2)
             elif d_score > p_score:
+                self.bank.deposit(self.bot.user.id, self.bet*2)
                 content += f"\n💸 Kaotasid {self.bet} eurot. Diiler võitis!"
+                self.bank.deposit(self.bot.user.id, self.bet*2)
             else:
                 content += "\n🤝 Viik! Sa said panuse tagasi."
-                db.refund_bet(self.author_id, self.bet)
+                self.bank.deposit(self.author_id, self.bet)
+                self.bank.deposit(self.bot.user.id, self.bet)
             
             for child in self.children:
                 child.disabled = True
@@ -97,6 +102,7 @@ class BlackjackView(discord.ui.View):
 class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.bank: BankCog = bot.get_cog('bank')
 
     @app_commands.command(name="blackjack")
     async def blackjack(self, interaction: discord.Interaction, bet:int):
@@ -104,12 +110,13 @@ class BlackjackCog(commands.Cog):
             await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
             return
         
-        balance, _ = db.get_user_balance(interaction.user.id)
+        balance = self.bank.get_balance(interaction.user.id)
         if bet > balance:
             await interaction.response.send_message(content=f"Jää oma võimekuse piiridesse! (max panus sulle: {balance})")
             return
 
-        db.place_bet(interaction.user.id, bet)
+        self.bank.withdraw(interaction.user.id, bet)
+        self.bank.withdraw_limitless(self.bot.user.id, bet)
 
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
@@ -118,7 +125,7 @@ class BlackjackCog(commands.Cog):
             f"**Sinu kaardid:** {' '.join(player_hand)} (kokku: {hand_value(player_hand)})\n"
             f"**Diileri kaardid:** {' '.join(dealer_hand)}"
         )
-        view = BlackjackView(interaction.user.id, deck, player_hand, dealer_hand, bet)
+        view = BlackjackView(interaction.user.id, self.bank, self.bot, deck, player_hand, dealer_hand, bet)
         view.message = await interaction.response.send_message(content=content, view=view)
 
 
