@@ -58,7 +58,6 @@ class BlackjackView(discord.ui.View):
                 content += f"\n🎉 Sa võitsid {self.bet} eurot!"
                 self.bank.deposit(self.player, self.bet*2)
             elif d_score > p_score:
-                self.bank.deposit(self.bot.user, self.bet*2)
                 content += f"\n💸 Kaotasid {self.bet} eurot. Diiler võitis!"
                 self.bank.deposit(self.bot.user, self.bet*2)
             else:
