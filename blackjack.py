@@ -102,21 +102,21 @@ class BlackjackView(discord.ui.View):
 class BlackjackCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bank: BankCog = bot.get_cog('bank')
 
     @app_commands.command(name="blackjack")
     async def blackjack(self, interaction: discord.Interaction, bet:int):
+        bank = self.bot.get_cog('bank')
         if bet < 1:
             await interaction.response.send_message(content="Nii väikese panusega sind mängu ei võeta!")
             return
         
-        balance = self.bank.get_balance(interaction.user)
+        balance = bank.get_balance(interaction.user)
         if bet > balance:
             await interaction.response.send_message(content=f"Jää oma võimekuse piiridesse! (max panus sulle: {balance})")
             return
 
-        self.bank.withdraw(interaction.user, bet)
-        self.bank.withdraw_limitless(self.bot.user, bet)
+        bank.withdraw(interaction.user, bet)
+        bank.withdraw_limitless(self.bot.user, bet)
 
         deck = create_deck()
         player_hand = [deck.pop(), deck.pop()]
@@ -125,7 +125,7 @@ class BlackjackCog(commands.Cog):
             f"**Sinu kaardid:** {' '.join(player_hand)} (kokku: {hand_value(player_hand)})\n"
             f"**Diileri kaardid:** {' '.join(dealer_hand)}"
         )
-        view = BlackjackView(interaction.user, self.bank, self.bot, deck, player_hand, dealer_hand, bet)
+        view = BlackjackView(interaction.user, bank, self.bot, deck, player_hand, dealer_hand, bet)
         view.message = await interaction.response.send_message(content=content, view=view)
 
 
