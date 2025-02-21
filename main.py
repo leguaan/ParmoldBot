@@ -13,16 +13,16 @@ from reminder import try_handle_remind_me, load_reminders
 from gym import try_handle_mhm
 from reputation import try_handle_bad_bot, try_handle_good_bot, try_handle_reaction_bot, try_handle_greeting
 from timeteller import try_handle_risto_time, try_handle_silver_time
-from gambling import try_handle_flex, try_handle_daily, try_handle_beg, try_handle_bet, try_handle_balance
 from instantmeme import try_handle_instant_meme
 from ace import try_handle_ace
 from impersonate import try_handle_impersonation
 from ai import try_handle_ai
 
-seqlog.log_to_seq(
+logging.basicConfig(level=logging.INFO)
+handler = seqlog.log_to_seq(
    server_url="http://seq:5341/",
    api_key="5gFywFBgqKr5OzJhvydH",
-   level=logging.DEBUG,
+   level=logging.INFO,
    batch_size=10,
    auto_flush_timeout=10,
    override_root_logger=True)
@@ -32,7 +32,7 @@ intents.message_content = True
 start_time: datetime = None
 bot = commands.Bot(intents=intents, command_prefix="$")
 
-WORD_LIST_FILE = "data/estonian_words.txt.gz"
+WORD_LIST_FILE = "data/estonian-words.txt.gz"
 startup_channel_id = int(os.environ.get('STARTUP_CHANNEL', '1297656271092187237'))
 last_sent_date = None
 cached_channel = None
@@ -77,8 +77,7 @@ async def on_ready():
         await bot.load_extension("bank")
         await bot.load_extension("blackjack")
         await bot.load_extension("roulette")
-        bot.tree.copy_global_to(guild=discord.Object(id=868526585744080897))
-        await bot.tree.sync(guild=discord.Object(id=868526585744080897))
+        await bot.tree.sync()
     except Exception as e:
         logging.error(f"Error loading extensions: {e}")
 
@@ -155,4 +154,4 @@ async def on_message(message):
     sys.stdout.flush()
 
 
-bot.run(os.environ.get('TOKEN'))
+bot.run(os.environ.get('TOKEN'), log_handler=handler)
