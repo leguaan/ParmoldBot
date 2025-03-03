@@ -38,7 +38,7 @@ last_sent_date = None
 cached_channel = None
 
 try:
-    with gzip.open(WORD_LIST_FILE, "rt", encoding="utf-8", errors="ignore") as f:
+    with gzip.open(WORD_LIST_FILE, "rt", encoding="latin_1", errors="ignore") as f:
         word_list = [line.strip() for line in f if line.strip()]
     logging.info(f"Loaded {len(word_list)} words from {WORD_LIST_FILE}")
 except Exception as e:
