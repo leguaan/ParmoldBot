@@ -92,8 +92,9 @@ async def on_ready():
 @tasks.loop(minutes=5.0)
 async def word_of_the_day_task():
     global last_sent_date, cached_channel
-    if last_sent_date == date.today():
-        return
+    # FIXME: võta commentid ära kui täpitähed ok
+    #if last_sent_date == date.today():
+    #    return
 
     now = datetime.now()
     total_minutes = now.hour * 60 + now.minute
