@@ -92,16 +92,12 @@ async def on_ready():
 @tasks.loop(minutes=5.0)
 async def word_of_the_day_task():
     global last_sent_date, cached_channel
-    # FIXME: võta commentid ära kui täpitähed ok
-    #if last_sent_date == date.today():
-    #    return
+    if last_sent_date == date.today():
+        return
 
     now = datetime.now()
     total_minutes = now.hour * 60 + now.minute
     # Target time is 7:00 AM UTC (420 minutes). Allow a window of ±10 minutes (410 to 430 minutes).
-    # Ma muudan ära sest ma tahan näha täpitähti
-    # FIXME: eemalda ära need read kui on titimiti
-    total_minutes = 420
     if 410 <= total_minutes <= 430:
         word = random.choice(word_list)
         await cached_channel.send(f"Tänase päeva sõna on **{word}**")
